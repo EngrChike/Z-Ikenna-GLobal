@@ -31,7 +31,7 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState(null);
 
   // OFFICIAL LINKS & HANDLES
-  const WHATSAPP_NUMBER = '+2349032690023'; 
+  const WHATSAPP_NUMBER = '+2349032690028'; 
   const FACEBOOK_URL = 'https://facebook.com/profile.php?id=61590626370497'; 
   const TIKTOK_URL = 'https://tiktok.com/@your-profile'; 
 
@@ -271,12 +271,14 @@ export default function App() {
         const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const fileName = `${Date.now()}_${cleanName}`;
         
+        // --- CHANGED TO LOWERCASE HERE ---
         const { error: upErr } = await supabase.storage
-          .from('PRODUCT-IMAGES') 
+          .from('product-images') 
           .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
 
         if (!upErr) {
-          const { data } = supabase.storage.from('PRODUCT-IMAGES').getPublicUrl(fileName);
+          // --- CHANGED TO LOWERCASE HERE ---
+          const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
           if (data?.publicUrl) image_url = data.publicUrl;
         } else {
           throw upErr;
@@ -331,12 +333,14 @@ export default function App() {
         const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const fileName = `${Date.now()}_${cleanName}`;
 
+        // --- CHANGED TO LOWERCASE HERE ---
         const { error: upErr } = await supabase.storage
-          .from('PRODUCT-IMAGES')
+          .from('product-images')
           .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
 
         if (!upErr) {
-          const { data } = supabase.storage.from('PRODUCT-IMAGES').getPublicUrl(fileName);
+          // --- CHANGED TO LOWERCASE HERE ---
+          const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
           if (data?.publicUrl) image_url = data.publicUrl;
         } else {
           throw upErr;
