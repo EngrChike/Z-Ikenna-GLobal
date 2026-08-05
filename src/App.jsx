@@ -83,7 +83,7 @@ export default function App() {
       }
     } catch (err) {
       setAuthError('An unexpected authentication error occurred.');
-    } fontally {
+    } finally {
       setAuthLoading(false);
     }
   };
