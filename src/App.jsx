@@ -31,7 +31,7 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState(null);
 
   // OFFICIAL LINKS & HANDLES
-  const WHATSAPP_NUMBER = '+2349032690023'; 
+  const WHATSAPP_NUMBER = '+2347060433000'; 
   const FACEBOOK_URL = 'https://facebook.com/profile.php?id=61590626370497'; 
   const TIKTOK_URL = 'https://tiktok.com/@your-profile'; 
 
@@ -105,7 +105,7 @@ export default function App() {
   };
 
   // HELPER FUNCTION: AUTOMATIC IMAGE COMPRESSOR
-  const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.75) => {
+  const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -134,14 +134,19 @@ export default function App() {
           canvas.height = height;
 
           const ctx = canvas.getContext('2d');
+
+          // Explicitly fill white background to resolve transparent PNG blank output
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+
+          // Draw image onto filled canvas
           ctx.drawImage(img, 0, 0, width, height);
 
           // Convert canvas back to a compressed JPEG file blob
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                // Convert blob back to a File object
-                const compressedFile = new File([blob], file.name, {
+                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
                   type: 'image/jpeg',
                   lastModified: Date.now(),
                 });
@@ -199,7 +204,7 @@ export default function App() {
 
   const handleWhatsAppCheckout = () => {
     if (cart.length === 0) return;
-    let msg = '✨ *AKUDON VENTURE - NEW ORDER* ✨\n------------------------------------------\n\n';
+    let msg = '✨ *Z IKENNA GLOBAL - NEW ORDER* ✨\n------------------------------------------\n\n';
     cart.forEach((item, idx) => {
       msg += `🛍️ *${idx + 1}. ${item.name}*\n   Price: #${item.price.toLocaleString()}\n   Qty: ${item.quantity}\n------------------------------------------\n`;
     });
@@ -252,35 +257,41 @@ export default function App() {
     setImageFile(null);
   };
 
+  // ADD PRODUCT (REMOVED UNSPLASH FALLBACK)
   const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!name || !price || !quantity) return;
+
+    if (!imageFile) {
+      alert('Please select an image file for the product before publishing.');
+      return;
+    }
+
     setUploading(true);
-    
-    let image_url = 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=600&q=80';
+    let image_url = '';
 
     try {
-      if (imageFile) {
-        let fileToUpload = imageFile;
-        try {
-          fileToUpload = await compressImage(imageFile, 800, 800, 0.75);
-        } catch (compressionError) {
-          console.warn("Failed to compress image, attempting original upload:", compressionError);
-        }
+      let fileToUpload = imageFile;
+      try {
+        fileToUpload = await compressImage(imageFile, 800, 800, 0.8);
+      } catch (compressionError) {
+        console.warn("Compression skipped, using original file:", compressionError);
+      }
 
-        const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        const fileName = `${Date.now()}_${cleanName}`;
-        
-        const { error: upErr } = await supabase.storage
-          .from('PRODUCT-IMAGES') 
-          .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
+      const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const fileName = `${Date.now()}_${cleanName}`;
+      
+      const { error: upErr } = await supabase.storage
+        .from('product-images') 
+        .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
 
-        if (!upErr) {
-          const { data } = supabase.storage.from('PRODUCT-IMAGES').getPublicUrl(fileName);
-          if (data?.publicUrl) image_url = data.publicUrl;
-        } else {
-          throw upErr;
-        }
+      if (upErr) throw upErr;
+
+      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
+      if (data?.publicUrl) {
+        image_url = data.publicUrl;
+      } else {
+        throw new Error("Failed to retrieve public URL from storage.");
       }
 
       const parsedQty = parseInt(quantity) || 0;
@@ -312,6 +323,7 @@ export default function App() {
     }
   };
 
+  // UPDATE PRODUCT
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     if (!editingProduct) return;
@@ -323,23 +335,25 @@ export default function App() {
       if (imageFile) {
         let fileToUpload = imageFile;
         try {
-          fileToUpload = await compressImage(imageFile, 800, 800, 0.75);
+          fileToUpload = await compressImage(imageFile, 800, 800, 0.8);
         } catch (compressionError) {
-          console.warn("Failed to compress image, using original:", compressionError);
+          console.warn("Compression skipped, using original file:", compressionError);
         }
 
         const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const fileName = `${Date.now()}_${cleanName}`;
 
         const { error: upErr } = await supabase.storage
-          .from('PRODUCT-IMAGES')
+          .from('product-images')
           .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
 
-        if (!upErr) {
-          const { data } = supabase.storage.from('PRODUCT-IMAGES').getPublicUrl(fileName);
-          if (data?.publicUrl) image_url = data.publicUrl;
+        if (upErr) throw upErr;
+
+        const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        if (data?.publicUrl) {
+          image_url = data.publicUrl;
         } else {
-          throw upErr;
+          throw new Error("Failed to retrieve public URL from storage.");
         }
       }
 
@@ -386,46 +400,42 @@ export default function App() {
       <header className="bg-white text-black sticky top-0 z-40 shadow-sm border-b border-gray-100 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           
-         {/* NEW MODERN LUXURY LOGO */}
-<div 
-  className="flex items-center space-x-2.5 cursor-pointer shrink-0 group select-none" 
-  onClick={() => { cancelEdit(); setView('client'); setSearchTerm(''); }}
->
-  {/* Custom Luxury DC Emblem Icon */}
-  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200 p-1.5">
-    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-white">
-      {/* Interlocking Monogram/Crown Shape */}
-      <path 
-        d="M30 25 C30 25, 45 15, 50 15 C55 15, 70 25, 70 25 C70 45, 60 75, 50 85 C40 75, 30 45, 30 25 Z" 
-        stroke="currentColor" 
-        strokeWidth="6" 
-        strokeLinecap="round" 
-        strokeLinejoin="round"
-      />
-      <circle cx="50" cy="42" r="7" fill="currentColor" />
-      <path 
-        d="M40 60 C45 65, 55 65, 60 60" 
-        stroke="currentColor" 
-        strokeWidth="6" 
-        strokeLinecap="round" 
-      />
-    </svg>
-  </div>
+          {/* LOGO */}
+          <div 
+            className="flex items-center space-x-2.5 cursor-pointer shrink-0 group select-none" 
+            onClick={() => { cancelEdit(); setView('client'); setSearchTerm(''); }}
+          >
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200 p-1.5">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-white">
+                <path 
+                  d="M30 25 C30 25, 45 15, 50 15 C55 15, 70 25, 70 25 C70 45, 60 75, 50 85 C40 75, 30 45, 30 25 Z" 
+                  stroke="currentColor" 
+                  strokeWidth="6" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+                <circle cx="50" cy="42" r="7" fill="currentColor" />
+                <path 
+                  d="M40 60 C45 65, 55 65, 60 60" 
+                  stroke="currentColor" 
+                  strokeWidth="6" 
+                  strokeLinecap="round" 
+                />
+              </svg>
+            </div>
 
-  {/* Refined Brand Typography */}
-  <div className="flex flex-col justify-center">
-    <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">
-      AKUDON VENTURES
-    </span>
-    <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5">
-      COSMETICS
-    </span>
-  </div>
-</div>
+            <div className="flex flex-col justify-center">
+              <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">
+                Z IKENNA GLOBAL
+              </span>
+              <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5">
+                COSMETICS
+              </span>
+            </div>
+          </div>
+
           {/* Action Area */}
           <div className="flex items-center space-x-2 sm:space-x-4 ml-auto">
-            
-            {/* SOCIAL ICONS GROUP */}
             <div className="flex items-center space-x-1 sm:space-x-2 border-r border-gray-200 pr-2 sm:pr-4 shrink-0">
               <a 
                 href={`https://wa.me/${WHATSAPP_NUMBER}`}
@@ -458,7 +468,6 @@ export default function App() {
               </a>
             </div>
 
-            {/* Admin Portal Toggle */}
             <button 
               onClick={handleViewToggle} 
               className="px-2 py-1.5 text-xs rounded-xl font-bold border border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center space-x-1 shrink-0"
@@ -467,7 +476,6 @@ export default function App() {
               <span className="hidden md:inline">{view === 'client' ? 'Admin Portal' : 'Back to Shop'}</span>
             </button>
 
-            {/* Header Cart Button */}
             {view === 'client' && (
               <button 
                 onClick={() => setIsCartOpen(true)} 
@@ -488,14 +496,12 @@ export default function App() {
       {/* CLIENT APP VIEW */}
       {view === 'client' && (
         <main className="max-w-7xl w-full mx-auto p-4 md:py-8">
-          
-          {/* Hero Banner */}
           <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 mb-6 border border-zinc-800 flex flex-col md:flex-row justify-between items-center">
             <div>
               <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20">
                 ✨ Best Store Experience
               </span>
-              <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">AKUDON VENTURE COLLECTIONS</h1>
+              <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">Z IKENNA GLOBAL COLLECTIONS</h1>
               <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp..</p>
             </div>
             <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
@@ -506,7 +512,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* SEARCH BOX INTERFACE */}
           <div className="max-w-md mx-auto mb-8 relative px-1">
             <div className="relative flex items-center">
               <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
@@ -533,7 +538,6 @@ export default function App() {
             )}
           </div>
 
-          {/* SEARCH RESULTS LAYOUT TARGET */}
           {filteredProducts.length === 0 ? (
             <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
               <p className="text-gray-400 text-sm">No cosmetics products match your search.</p>
@@ -551,14 +555,12 @@ export default function App() {
 
                 return (
                   <div key={p.id} className="bg-white rounded-xl border border-gray-200/60 overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:shadow-lg relative">
-                    
                     <button className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-500">
                       <Heart className="w-3.5 h-3.5" />
                     </button>
 
                     <div className="relative bg-gray-50 aspect-[4/5] w-full overflow-hidden flex items-center justify-center border-b border-gray-100">
                       <img src={p.image_url} alt={p.name} className="object-cover w-full h-full" />
-                      
                       <div className="absolute bottom-2 left-2 z-10">
                         <span className="bg-[#f68b1e] text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md">
                           {p.quantity > 0 ? `${p.quantity} Items Left` : 'Out of Stock'}
@@ -625,7 +627,6 @@ export default function App() {
       {view === 'admin' && (
         <main className="max-w-7xl w-full mx-auto p-4 py-8">
           {!session ? (
-            /* SECURE SUPABASE AUTH LOGIN FORM */
             <div className="max-w-sm mx-auto bg-white rounded-2xl border border-gray-200 p-6 mt-10 shadow-sm">
               <div className="text-center mb-5">
                 <h2 className="text-lg font-bold text-gray-900">Admin Portal Login</h2>
@@ -637,7 +638,7 @@ export default function App() {
                   <label className="text-[10px] font-bold uppercase text-gray-500 block mb-1">Email Address</label>
                   <input 
                     type="email" 
-                    placeholder="admin@akudon.com" 
+                    placeholder="admin@zikennaglobal.com" 
                     value={adminEmail} 
                     onChange={e => setAdminEmail(e.target.value)} 
                     className="w-full border p-2.5 rounded-xl text-xs bg-white text-black focus:outline-none focus:border-[#f68b1e]" 
@@ -666,7 +667,6 @@ export default function App() {
             </div>
           ) : (
             <div>
-              {/* ADMIN HEADER TOOLBAR */}
               <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
                 <div>
                   <p className="text-[10px] uppercase font-bold text-gray-400">Authenticated Session</p>
@@ -682,8 +682,6 @@ export default function App() {
               </div>
 
               <div className="grid md:grid-cols-3 gap-6">
-                
-                {/* Product Form (Add & Edit) */}
                 <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit">
                   <div className="flex justify-between items-center pb-2 border-b mb-4">
                     <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">
@@ -735,13 +733,14 @@ export default function App() {
                     
                     <div className="space-y-1">
                       <label className="text-[10px] text-gray-400 block font-bold uppercase">
-                        {editingProduct ? 'Change Product Image (Optional)' : 'Product Image'}
+                        {editingProduct ? 'Change Product Image (Optional)' : 'Product Image (Required)'}
                       </label>
                       <input 
                         type="file" 
                         accept="image/*" 
                         onChange={e => setImageFile(e.target.files[0])} 
                         className="w-full text-xs text-gray-500" 
+                        required={!editingProduct}
                       />
                     </div>
                     
@@ -755,7 +754,6 @@ export default function App() {
                   </form>
                 </div>
 
-                {/* Operational Catalog Controller */}
                 <div className="md:col-span-2 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                   <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 mb-4 pb-2 border-b">Operational Catalog Controller</h3>
                   <div className="overflow-x-auto">
