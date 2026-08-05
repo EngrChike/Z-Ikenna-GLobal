@@ -577,7 +577,7 @@ export default function App() {
                     <div className="p-3 flex-1 flex flex-col justify-between bg-white">
                       <div>
                         <div className="flex items-center space-x-1 mb-1">
-                          <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">AKUDON</span>
+                          <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">ZIKENNAGLOBAL</span>
                           <span className="text-blue-500 text-[10px] font-bold">✔</span>
                         </div>
                         <h3 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem] leading-tight font-medium">
