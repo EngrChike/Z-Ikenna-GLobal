@@ -104,7 +104,7 @@ export default function App() {
     }
   };
 
-  // FIXED HELPER FUNCTION: AUTOMATIC IMAGE COMPRESSOR
+  // HELPER FUNCTION: AUTOMATIC IMAGE COMPRESSOR
   const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -135,7 +135,7 @@ export default function App() {
 
           const ctx = canvas.getContext('2d');
 
-          // FIX: Explicitly fill white background to resolve transparent PNG blank output
+          // Explicitly fill white background to resolve transparent PNG blank output
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, width, height);
 
@@ -257,35 +257,41 @@ export default function App() {
     setImageFile(null);
   };
 
+  // ADD PRODUCT (REMOVED UNSPLASH FALLBACK)
   const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!name || !price || !quantity) return;
+
+    if (!imageFile) {
+      alert('Please select an image file for the product before publishing.');
+      return;
+    }
+
     setUploading(true);
-    
-    let image_url = 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=600&q=80';
+    let image_url = '';
 
     try {
-      if (imageFile) {
-        let fileToUpload = imageFile;
-        try {
-          fileToUpload = await compressImage(imageFile, 800, 800, 0.8);
-        } catch (compressionError) {
-          console.warn("Failed to compress image, attempting original upload:", compressionError);
-        }
+      let fileToUpload = imageFile;
+      try {
+        fileToUpload = await compressImage(imageFile, 800, 800, 0.8);
+      } catch (compressionError) {
+        console.warn("Compression skipped, using original file:", compressionError);
+      }
 
-        const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        const fileName = `${Date.now()}_${cleanName}`;
-        
-        const { error: upErr } = await supabase.storage
-          .from('product-images') 
-          .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
+      const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const fileName = `${Date.now()}_${cleanName}`;
+      
+      const { error: upErr } = await supabase.storage
+        .from('product-images') 
+        .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
 
-        if (!upErr) {
-          const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
-          if (data?.publicUrl) image_url = data.publicUrl;
-        } else {
-          throw upErr;
-        }
+      if (upErr) throw upErr;
+
+      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
+      if (data?.publicUrl) {
+        image_url = data.publicUrl;
+      } else {
+        throw new Error("Failed to retrieve public URL from storage.");
       }
 
       const parsedQty = parseInt(quantity) || 0;
@@ -317,6 +323,7 @@ export default function App() {
     }
   };
 
+  // UPDATE PRODUCT
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     if (!editingProduct) return;
@@ -330,7 +337,7 @@ export default function App() {
         try {
           fileToUpload = await compressImage(imageFile, 800, 800, 0.8);
         } catch (compressionError) {
-          console.warn("Failed to compress image, using original:", compressionError);
+          console.warn("Compression skipped, using original file:", compressionError);
         }
 
         const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9.]/g, '_');
@@ -340,11 +347,13 @@ export default function App() {
           .from('product-images')
           .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
 
-        if (!upErr) {
-          const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
-          if (data?.publicUrl) image_url = data.publicUrl;
+        if (upErr) throw upErr;
+
+        const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        if (data?.publicUrl) {
+          image_url = data.publicUrl;
         } else {
-          throw upErr;
+          throw new Error("Failed to retrieve public URL from storage.");
         }
       }
 
@@ -391,7 +400,7 @@ export default function App() {
       <header className="bg-white text-black sticky top-0 z-40 shadow-sm border-b border-gray-100 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           
-          {/* NEW MODERN LUXURY LOGO */}
+          {/* LOGO */}
           <div 
             className="flex items-center space-x-2.5 cursor-pointer shrink-0 group select-none" 
             onClick={() => { cancelEdit(); setView('client'); setSearchTerm(''); }}
@@ -724,13 +733,14 @@ export default function App() {
                     
                     <div className="space-y-1">
                       <label className="text-[10px] text-gray-400 block font-bold uppercase">
-                        {editingProduct ? 'Change Product Image (Optional)' : 'Product Image'}
+                        {editingProduct ? 'Change Product Image (Optional)' : 'Product Image (Required)'}
                       </label>
                       <input 
                         type="file" 
                         accept="image/*" 
                         onChange={e => setImageFile(e.target.files[0])} 
                         className="w-full text-xs text-gray-500" 
+                        required={!editingProduct}
                       />
                     </div>
                     
