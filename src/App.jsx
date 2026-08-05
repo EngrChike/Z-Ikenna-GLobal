@@ -117,7 +117,6 @@ export default function App() {
           let width = img.width;
           let height = img.height;
 
-          // Calculate new dimensions maintaining aspect ratio
           if (width > height) {
             if (width > maxWidth) {
               height = Math.round((height * maxWidth) / width);
@@ -134,15 +133,10 @@ export default function App() {
           canvas.height = height;
 
           const ctx = canvas.getContext('2d');
-
-          // Explicitly fill white background to resolve transparent PNG blank output
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, width, height);
-
-          // Draw image onto filled canvas
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Convert canvas back to a compressed JPEG file blob
           canvas.toBlob(
             (blob) => {
               if (blob) {
@@ -257,7 +251,7 @@ export default function App() {
     setImageFile(null);
   };
 
-  // ADD PRODUCT (REMOVED UNSPLASH FALLBACK)
+  // ADD PRODUCT
   const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!name || !price || !quantity) return;
@@ -400,27 +394,33 @@ export default function App() {
       <header className="bg-white text-black sticky top-0 z-40 shadow-sm border-b border-gray-100 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           
-          {/* LOGO */}
+          {/* UPDATED LOGO WITH ZIG INITIALS */}
           <div 
             className="flex items-center space-x-2.5 cursor-pointer shrink-0 group select-none" 
             onClick={() => { cancelEdit(); setView('client'); setSearchTerm(''); }}
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200 p-1.5">
-              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-white">
-                <path 
-                  d="M30 25 C30 25, 45 15, 50 15 C55 15, 70 25, 70 25 C70 45, 60 75, 50 85 C40 75, 30 45, 30 25 Z" 
-                  stroke="currentColor" 
-                  strokeWidth="6" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                <circle cx="50" cy="42" r="7" fill="currentColor" />
-                <path 
-                  d="M40 60 C45 65, 55 65, 60 60" 
-                  stroke="currentColor" 
-                  strokeWidth="6" 
-                  strokeLinecap="round" 
-                />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-full h-full">
+                <defs>
+                  <linearGradient id="dark-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#27272a" />
+                    <stop offset="100%" stopColor="#09090b" />
+                  </linearGradient>
+                </defs>
+                <rect width="100" height="100" rx="22" fill="url(#dark-bg)" />
+                <rect width="96" height="96" x="2" y="2" rx="20" fill="none" stroke="#f68b1e" strokeWidth="4" />
+                <text 
+                  x="50%" 
+                  y="56%" 
+                  fontFamily="system-ui, -apple-system, Arial, sans-serif" 
+                  fontWeight="900" 
+                  fontSize="40" 
+                  fill="#f68b1e" 
+                  textAnchor="middle" 
+                  dominantBaseline="middle" 
+                  letterSpacing="1">
+                  ZIG
+                </text>
               </svg>
             </div>
 
