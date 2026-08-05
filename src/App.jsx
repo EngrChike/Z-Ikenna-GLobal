@@ -419,7 +419,7 @@ export default function App() {
   {/* Refined Brand Typography */}
   <div className="flex flex-col justify-center">
     <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">
-      AKUDON VENTURES
+      Z IKENNA GLOBAL
     </span>
     <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5">
       COSMETICS
@@ -499,7 +499,7 @@ export default function App() {
               <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20">
                 ✨ Best Store Experience
               </span>
-              <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">AKUDON VENTURE COLLECTIONS</h1>
+              <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">Z IKENNA GLOBAL COLLECTIONS</h1>
               <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp..</p>
             </div>
             <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
