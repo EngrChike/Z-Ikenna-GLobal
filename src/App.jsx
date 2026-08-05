@@ -31,7 +31,7 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState(null);
 
   // OFFICIAL LINKS & HANDLES
-  const WHATSAPP_NUMBER = '+2349032690028'; 
+  const WHATSAPP_NUMBER = '+2347060433000'; 
   const FACEBOOK_URL = 'https://facebook.com/profile.php?id=61590626370497'; 
   const TIKTOK_URL = 'https://tiktok.com/@your-profile'; 
 
@@ -199,7 +199,7 @@ export default function App() {
 
   const handleWhatsAppCheckout = () => {
     if (cart.length === 0) return;
-    let msg = '✨ *AKUDON VENTURE - NEW ORDER* ✨\n------------------------------------------\n\n';
+    let msg = '✨ *Z IKENNA GLOBAL - NEW ORDER* ✨\n------------------------------------------\n\n';
     cart.forEach((item, idx) => {
       msg += `🛍️ *${idx + 1}. ${item.name}*\n   Price: #${item.price.toLocaleString()}\n   Qty: ${item.quantity}\n------------------------------------------\n`;
     });
