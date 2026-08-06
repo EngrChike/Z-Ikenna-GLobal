@@ -227,201 +227,205 @@ export default function App() {
         </div>
       </header>
 
-      {/* CLIENT APP VIEW WITH SIDEBAR */}
+      {/* CLIENT APP VIEW */}
       {view === 'client' && (
-        <main className="max-w-7xl w-full mx-auto p-4 md:py-8">
-          <div className="flex flex-col md:flex-row gap-6">
-            
-            {/* SIDEBAR CATEGORY MENU */}
-            <aside className="w-full md:w-64 shrink-0 space-y-4">
-              <div className="bg-white rounded-2xl p-4 border border-gray-200/60 shadow-xs">
-                <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 px-2 flex items-center space-x-1.5">
-                  <Menu className="w-4 h-4 text-[#f68b1e]" />
-                  <span>Categories</span>
-                </h3>
-                
-                <nav className="space-y-1">
-                  <button
-                    onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${
-                      selectedCategory === 'home' && !searchTerm 
-                        ? 'bg-[#f68b1e] text-white shadow-md' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Featured Showcase</span>
-                  </button>
-
-                  <button
-                    onClick={() => { setSelectedCategory('all'); setSearchTerm(''); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${
-                      selectedCategory === 'all' && !searchTerm 
-                        ? 'bg-[#f68b1e] text-white shadow-md' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <PackageOpen className="w-3.5 h-3.5" />
-                    <span>All Products</span>
-                  </button>
-
-                  <div className="pt-2 pb-1 border-t border-gray-100 mt-2">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Collections</span>
-                  </div>
-
-                  {categories.map(cat => {
-                    const count = products.filter(p => p.category_id === cat.id).length;
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => { setSelectedCategory(String(cat.id)); setSearchTerm(''); }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                          selectedCategory === String(cat.id) && !searchTerm 
-                            ? 'bg-[#f68b1e] text-white shadow-md' 
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <span className="truncate">{cat.name}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                          selectedCategory === String(cat.id) && !searchTerm ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </nav>
+        <main className="max-w-7xl w-full mx-auto p-4 md:py-8 flex flex-col md:grid md:grid-cols-4 gap-6">
+          
+          {/* BANNER & SEARCH SECTION */}
+          {/* Order 2 on Mobile (Under Categories), Order 1 on Desktop (Full top width) */}
+          <div className="order-2 md:order-1 md:col-span-4 flex flex-col gap-6">
+            <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 border border-zinc-800 flex flex-col md:flex-row justify-between items-center">
+              <div>
+                <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20 inline-flex items-center space-x-1.5">
+                  <Sparkles className="w-3 h-3" />
+                  <span>{selectedCategory === 'home' ? 'Randomized Showcase' : selectedCategory === 'all' ? 'Full Catalog' : 'Category Collection'}</span>
+                </span>
+                <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight"> Z IKENNA GLOBAL</h1>
+                <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp.</p>
               </div>
-            </aside>
-
-            {/* MAIN CATALOG AREA */}
-            <div className="flex-1">
-              <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 mb-6 border border-zinc-800 flex flex-col md:flex-row justify-between items-center">
-                <div>
-                  <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20 inline-flex items-center space-x-1.5">
-                    <Sparkles className="w-3 h-3" />
-                    <span>{selectedCategory === 'home' ? 'Randomized Showcase' : selectedCategory === 'all' ? 'Full Catalog' : 'Category Collection'}</span>
-                  </span>
-                  <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight"> Z IKENNA GLOBAL</h1>
-                  <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp.</p>
-                </div>
-                <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Fast Dispatch</p>
-                  <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1 mt-0.5">
-                    <Smartphone className="w-3.5 h-3.5" /> <span>WhatsApp Checkout</span>
-                  </p>
-                </div>
+              <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
+                <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Fast Dispatch</p>
+                <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1 mt-0.5">
+                  <Smartphone className="w-3.5 h-3.5" /> <span>WhatsApp Checkout</span>
+                </p>
               </div>
-
-              <div className="mb-6 relative px-1">
-                <div className="relative flex items-center">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-                  <input 
-                    type="text" 
-                    placeholder="Search for items, brands, cleansers..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white text-sm text-black border border-gray-200 pl-10 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-[#f68b1e] focus:ring-1 focus:ring-[#f68b1e] transition-all shadow-xs"
-                  />
-                  {searchTerm && (
-                    <button 
-                      onClick={() => setSearchTerm('')} 
-                      className="absolute right-3 p-1 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-                {searchTerm && (
-                  <p className="text-[11px] text-gray-400 mt-1.5 ml-1">
-                    Showing results for "<span className="text-zinc-700 font-medium">{searchTerm}</span>" ({displayedProducts.length} items found)
-                  </p>
-                )}
-              </div>
-
-              {displayedProducts.length === 0 ? (
-                <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
-                  <p className="text-gray-400 text-sm">No cosmetics products found in this selection.</p>
-                  <button onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }} className="mt-3 text-xs text-[#f68b1e] font-bold hover:underline">
-                    Return to featured showcase
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {displayedProducts.map((p) => {
-                    const itemQtyInCart = getProductCartQty(p.id);
-                    const isOutOfStock = p.quantity !== null ? p.quantity <= 0 : !p.stock_status;
-
-                    return (
-                      <div key={p.id} className="bg-white rounded-xl border border-gray-200/60 overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:shadow-lg relative">
-                        <button className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-500">
-                          <Heart className="w-3.5 h-3.5" />
-                        </button>
-
-                        <div className="relative bg-gray-50 aspect-[4/5] w-full overflow-hidden flex items-center justify-center border-b border-gray-100">
-                          <img src={p.image_url} alt={p.name} className="object-cover w-full h-full" />
-                          <div className="absolute bottom-2 left-2 z-10">
-                            <span className="bg-[#f68b1e] text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md">
-                              {p.quantity > 0 ? `${p.quantity} Left` : 'Out of Stock'}
-                            </span>
-                          </div>
-
-                          {isOutOfStock && (
-                            <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
-                              <span className="bg-zinc-800 text-white font-bold text-[10px] uppercase tracking-widest px-2.5 py-1 rounded">SOLD OUT</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="p-3 flex-1 flex flex-col justify-between bg-white">
-                          <div>
-                            <div className="flex items-center space-x-1 mb-1">
-                              <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">Z IKENNA GLOBAL</span>
-                              <span className="text-blue-500 text-[10px] font-bold">✔</span>
-                            </div>
-                            <h3 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem] leading-tight font-medium">
-                              {p.name} {p.description && `• ${p.description}`}
-                            </h3>
-                            
-                            <div className="flex items-center space-x-1 mt-1.5">
-                              <div className="flex text-amber-400">
-                                {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
-                              </div>
-                              <span className="text-[10px] text-gray-400 font-medium">(4.9)</span>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-3">
-                            <p className="text-sm font-black text-[#f68b1e] tracking-tight">#{p.price.toLocaleString()}</p>
-
-                            <div className="mt-2.5">
-                              {isOutOfStock ? (
-                                <button disabled className="w-full bg-gray-100 text-gray-400 text-[11px] font-bold py-1.5 rounded-lg cursor-not-allowed">
-                                  Out of Stock
-                                </button>
-                              ) : itemQtyInCart > 0 ? (
-                                <div className="flex items-center justify-between border border-[#f68b1e] rounded-lg overflow-hidden bg-white h-7 shadow-sm">
-                                  <button onClick={() => changeQuantity(p, -1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold">-</button>
-                                  <span className="w-full text-center text-xs font-black text-black">{itemQtyInCart}</span>
-                                  <button onClick={() => changeQuantity(p, 1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold">+</button>
-                                </div>
-                              ) : (
-                                <button onClick={() => addToCart(p)} className="w-full bg-[#f68b1e] hover:bg-[#e07a16] text-white font-bold py-1.5 rounded-lg text-xs tracking-wide transition-all">
-                                  Add to Cart
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
 
+            <div className="relative px-1">
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
+                <input 
+                  type="text" 
+                  placeholder="Search for items, brands, cleansers..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-white text-sm text-black border border-gray-200 pl-10 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-[#f68b1e] focus:ring-1 focus:ring-[#f68b1e] transition-all shadow-xs"
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')} 
+                    className="absolute right-3 p-1 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {searchTerm && (
+                <p className="text-[11px] text-gray-400 mt-1.5 ml-1">
+                  Showing results for "<span className="text-zinc-700 font-medium">{searchTerm}</span>" ({displayedProducts.length} items found)
+                </p>
+              )}
+            </div>
           </div>
+
+          {/* SIDEBAR CATEGORY MENU */}
+          {/* Order 1 on Mobile (Top), Order 2 on Desktop (Left Column) */}
+          <aside className="order-1 md:order-2 md:col-span-1 w-full shrink-0 space-y-4">
+            <div className="bg-white rounded-2xl p-4 border border-gray-200/60 shadow-xs">
+              <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 px-2 flex items-center space-x-1.5">
+                <Menu className="w-4 h-4 text-[#f68b1e]" />
+                <span>Categories</span>
+              </h3>
+              
+              <nav className="space-y-1">
+                <button
+                  onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${
+                    selectedCategory === 'home' && !searchTerm 
+                      ? 'bg-[#f68b1e] text-white shadow-md' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Featured Showcase</span>
+                </button>
+
+                <button
+                  onClick={() => { setSelectedCategory('all'); setSearchTerm(''); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${
+                    selectedCategory === 'all' && !searchTerm 
+                      ? 'bg-[#f68b1e] text-white shadow-md' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <PackageOpen className="w-3.5 h-3.5" />
+                  <span>All Products</span>
+                </button>
+
+                <div className="pt-2 pb-1 border-t border-gray-100 mt-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Collections</span>
+                </div>
+
+                {categories.map(cat => {
+                  const count = products.filter(p => p.category_id === cat.id).length;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => { setSelectedCategory(String(cat.id)); setSearchTerm(''); }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                        selectedCategory === String(cat.id) && !searchTerm 
+                          ? 'bg-[#f68b1e] text-white shadow-md' 
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="truncate">{cat.name}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        selectedCategory === String(cat.id) && !searchTerm ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </aside>
+
+          {/* MAIN CATALOG AREA (PRODUCTS) */}
+          {/* Order 3 on Mobile (Bottom), Order 3 on Desktop (Right Column, Inline with Categories) */}
+          <div className="order-3 md:order-3 md:col-span-3">
+            {displayedProducts.length === 0 ? (
+              <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
+                <p className="text-gray-400 text-sm">No cosmetics products found in this selection.</p>
+                <button onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }} className="mt-3 text-xs text-[#f68b1e] font-bold hover:underline">
+                  Return to featured showcase
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {displayedProducts.map((p) => {
+                  const itemQtyInCart = getProductCartQty(p.id);
+                  const isOutOfStock = p.quantity !== null ? p.quantity <= 0 : !p.stock_status;
+
+                  return (
+                    <div key={p.id} className="bg-white rounded-xl border border-gray-200/60 overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:shadow-lg relative">
+                      <button className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-500">
+                        <Heart className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="relative bg-gray-50 aspect-[4/5] w-full overflow-hidden flex items-center justify-center border-b border-gray-100">
+                        <img src={p.image_url} alt={p.name} className="object-cover w-full h-full" />
+                        <div className="absolute bottom-2 left-2 z-10">
+                          <span className="bg-[#f68b1e] text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md">
+                            {p.quantity > 0 ? `${p.quantity} Left` : 'Out of Stock'}
+                          </span>
+                        </div>
+
+                        {isOutOfStock && (
+                          <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
+                            <span className="bg-zinc-800 text-white font-bold text-[10px] uppercase tracking-widest px-2.5 py-1 rounded">SOLD OUT</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 flex-1 flex flex-col justify-between bg-white">
+                        <div>
+                          <div className="flex items-center space-x-1 mb-1">
+                            <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">Z IKENNA GLOBAL</span>
+                            <span className="text-blue-500 text-[10px] font-bold">✔</span>
+                          </div>
+                          <h3 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem] leading-tight font-medium">
+                            {p.name} {p.description && `• ${p.description}`}
+                          </h3>
+                          
+                          <div className="flex items-center space-x-1 mt-1.5">
+                            <div className="flex text-amber-400">
+                              {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
+                            </div>
+                            <span className="text-[10px] text-gray-400 font-medium">(4.9)</span>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-sm font-black text-[#f68b1e] tracking-tight">#{p.price.toLocaleString()}</p>
+
+                          <div className="mt-2.5">
+                            {isOutOfStock ? (
+                              <button disabled className="w-full bg-gray-100 text-gray-400 text-[11px] font-bold py-1.5 rounded-lg cursor-not-allowed">
+                                Out of Stock
+                              </button>
+                            ) : itemQtyInCart > 0 ? (
+                              <div className="flex items-center justify-between border border-[#f68b1e] rounded-lg overflow-hidden bg-white h-7 shadow-sm">
+                                <button onClick={() => changeQuantity(p, -1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold">-</button>
+                                <span className="w-full text-center text-xs font-black text-black">{itemQtyInCart}</span>
+                                <button onClick={() => changeQuantity(p, 1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold">+</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => addToCart(p)} className="w-full bg-[#f68b1e] hover:bg-[#e07a16] text-white font-bold py-1.5 rounded-lg text-xs tracking-wide transition-all">
+                                Add to Cart
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
         </main>
       )}
 
