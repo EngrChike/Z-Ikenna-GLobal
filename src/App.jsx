@@ -90,7 +90,7 @@ export default function App() {
 
   const handleWhatsAppCheckout = () => {
     if (cart.length === 0) return;
-    let msg = '✨ *DONCHIKE COSMETICS - NEW ORDER* ✨\n------------------------------------------\n\n';
+    let msg = '✨ *Z IKENNA GLOBAL - NEW ORDER* ✨\n------------------------------------------\n\n';
     cart.forEach((item, idx) => {
       msg += `🛍️ *${idx + 1}. ${item.name}*\n   Price: #${item.price.toLocaleString()}\n   Qty: ${item.quantity}\n------------------------------------------\n`;
     });
@@ -154,14 +154,14 @@ export default function App() {
                   textAnchor="middle" 
                   dominantBaseline="middle" 
                   letterSpacing="1">
-                  DC
+                  ZIG
                 </text>
               </svg>
             </div>
 
             <div className="flex flex-col justify-center">
               <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">
-                DONCHIKE
+                Z IKENNA GLOBAL
               </span>
               <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5">
                 COSMETICS
@@ -302,7 +302,7 @@ export default function App() {
                     <Sparkles className="w-3 h-3" />
                     <span>{selectedCategory === 'home' ? 'Randomized Showcase' : selectedCategory === 'all' ? 'Full Catalog' : 'Category Collection'}</span>
                   </span>
-                  <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">DONCHIKE COSMETICS</h1>
+                  <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight"> Z IKENNA GLOBAL</h1>
                   <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp.</p>
                 </div>
                 <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
@@ -376,7 +376,7 @@ export default function App() {
                         <div className="p-3 flex-1 flex flex-col justify-between bg-white">
                           <div>
                             <div className="flex items-center space-x-1 mb-1">
-                              <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">DONCHIKE</span>
+                              <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">Z IKENNA GLOBAL</span>
                               <span className="text-blue-500 text-[10px] font-bold">✔</span>
                             </div>
                             <h3 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem] leading-tight font-medium">

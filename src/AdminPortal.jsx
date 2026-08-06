@@ -387,7 +387,7 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
               <label className="text-[10px] font-bold uppercase text-gray-500 block mb-1">Email Address</label>
               <input 
                 type="email" 
-                placeholder="admin@donchikecosmetics.com" 
+                placeholder="admin@zikennaglobal.com" 
                 value={adminEmail} 
                 onChange={e => setAdminEmail(e.target.value)} 
                 className="w-full border p-2.5 rounded-xl text-xs bg-white text-black focus:outline-none focus:border-[#f68b1e]" 
