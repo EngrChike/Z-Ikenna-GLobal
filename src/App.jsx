@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './utils/supabaseClient';
 import AdminPortal from './AdminPortal';
-import { ShoppingCart, ShieldCheck, Smartphone, Star, Heart, Video, Search, X, Menu, Sparkles, PackageOpen } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, Smartphone, Star, Heart, Video, Search, X, Menu, Sparkles, PackageOpen, MapPin } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState('client'); 
@@ -232,7 +232,6 @@ export default function App() {
         <main className="max-w-7xl w-full mx-auto p-4 md:py-8 flex flex-col md:grid md:grid-cols-4 gap-6">
           
           {/* BANNER & SEARCH SECTION */}
-          {/* Order 1 on Mobile (Top), Order 1 on Desktop (Full top width) */}
           <div className="order-1 md:col-span-4 flex flex-col gap-6">
             <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 border border-zinc-800 flex flex-col md:flex-row justify-between items-center">
               <div>
@@ -242,8 +241,14 @@ export default function App() {
                 </span>
                 <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">Z IKENNA GLOBAL</h1>
                 <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp.</p>
+                
+                {/* Physical Store Address with Modern Location Icon */}
+                <div className="mt-3.5 flex items-center space-x-2 text-xs text-zinc-300 font-medium bg-white/5 py-1.5 px-3 rounded-lg border border-white/10 w-fit">
+                  <MapPin className="w-4 h-4 text-[#f68b1e] shrink-0" />
+                  <span>Abia Plaza B56 Upstairs, Trade Fair Lagos, Nigeria</span>
+                </div>
               </div>
-              <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
+              <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0 shrink-0">
                 <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Fast Dispatch</p>
                 <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1 mt-0.5">
                   <Smartphone className="w-3.5 h-3.5" /> <span>WhatsApp Checkout</span>
@@ -279,7 +284,6 @@ export default function App() {
           </div>
 
           {/* SIDEBAR CATEGORY MENU */}
-          {/* Order 2 on Mobile (Under Banner), Order 2 on Desktop (Left Column) */}
           <aside className="order-2 md:order-2 md:col-span-1 w-full shrink-0 space-y-4">
             <div className="bg-white rounded-2xl p-4 border border-gray-200/60 shadow-xs">
               <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 px-2 flex items-center space-x-1.5">
@@ -342,7 +346,6 @@ export default function App() {
           </aside>
 
           {/* MAIN CATALOG AREA (PRODUCTS) */}
-          {/* Order 3 on Mobile (Bottom), Order 3 on Desktop (Right Column, Inline with Categories) */}
           <div className="order-3 md:order-3 md:col-span-3">
             {displayedProducts.length === 0 ? (
               <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
