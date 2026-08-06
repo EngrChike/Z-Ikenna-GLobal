@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './utils/supabaseClient';
-import { Trash2, Pencil, LogOut, FolderPlus } from 'lucide-react';
+import { Trash2, Edit3, LogOut, FolderPlus, Package, DollarSign, Layers, Image as ImageIcon } from 'lucide-react';
 
 export default function AdminPortal({ products, categories, fetchProducts, fetchCategories, setView }) {
   const [session, setSession] = useState(null);
@@ -66,7 +66,6 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
     setView('client');
   };
 
-  // CREATE CATEGORY HANDLER
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
@@ -334,7 +333,7 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
               <label className="text-[10px] font-bold uppercase text-gray-500 block mb-1">Email Address</label>
               <input 
                 type="email" 
-                placeholder="admin@zikennaglobal.com" 
+                placeholder="admin@donchikecosmetics.com" 
                 value={adminEmail} 
                 onChange={e => setAdminEmail(e.target.value)} 
                 className="w-full border p-2.5 rounded-xl text-xs bg-white text-black focus:outline-none focus:border-[#f68b1e]" 
@@ -364,9 +363,12 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
       ) : (
         <div>
           <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div>
-              <p className="text-[10px] uppercase font-bold text-gray-400">Authenticated Session</p>
-              <p className="text-xs font-bold text-gray-800">{session.user.email}</p>
+            <div className="flex items-center space-x-2">
+              <Package className="w-5 h-5 text-[#f68b1e]" />
+              <div>
+                <p className="text-[10px] uppercase font-bold text-gray-400">Authenticated Session</p>
+                <p className="text-xs font-bold text-gray-800">{session.user.email}</p>
+              </div>
             </div>
             <button 
               onClick={handleAdminLogout} 
@@ -407,9 +409,12 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
               {/* ADD/EDIT PRODUCT CARD */}
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-center pb-2 border-b mb-4">
-                  <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">
-                    {editingProduct ? 'Update Product' : 'Add New Product'}
-                  </h3>
+                  <div className="flex items-center space-x-1.5">
+                    <Package className="w-4 h-4 text-[#f68b1e]" />
+                    <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">
+                      {editingProduct ? 'Update Product' : 'Add New Product'}
+                    </h3>
+                  </div>
                   {editingProduct && (
                     <button 
                       onClick={cancelEdit} 
@@ -430,14 +435,17 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
                     required 
                   />
                   <div className="grid grid-cols-2 gap-3">
-                    <input 
-                      type="number" 
-                      placeholder="Price (#)" 
-                      value={price} 
-                      onChange={e => setPrice(e.target.value)} 
-                      className="w-full border p-2 text-xs rounded-lg bg-white text-black" 
-                      required 
-                    />
+                    <div className="relative flex items-center">
+                      <DollarSign className="w-3.5 h-3.5 text-gray-400 absolute left-2" />
+                      <input 
+                        type="number" 
+                        placeholder="Price" 
+                        value={price} 
+                        onChange={e => setPrice(e.target.value)} 
+                        className="w-full border p-2 pl-7 text-xs rounded-lg bg-white text-black" 
+                        required 
+                      />
+                    </div>
                     <input 
                       type="number" 
                       placeholder="Stock Qty" 
@@ -449,7 +457,10 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-gray-400 block font-bold uppercase mb-1">Product Category</label>
+                    <label className="text-[10px] text-gray-400 block font-bold uppercase mb-1 flex items-center space-x-1">
+                      <Layers className="w-3 h-3 text-gray-400" />
+                      <span>Product Category</span>
+                    </label>
                     <select 
                       value={categoryId} 
                       onChange={e => setCategoryId(e.target.value)} 
@@ -470,8 +481,9 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
                   />
                   
                   <div className="space-y-1">
-                    <label className="text-[10px] text-gray-400 block font-bold uppercase">
-                      {editingProduct ? 'Change Product Image (Optional)' : 'Product Image (Required)'}
+                    <label className="text-[10px] text-gray-400 block font-bold uppercase flex items-center space-x-1">
+                      <ImageIcon className="w-3 h-3 text-gray-400" />
+                      <span>{editingProduct ? 'Change Product Image (Optional)' : 'Product Image (Required)'}</span>
                     </label>
                     <input 
                       type="file" 
@@ -494,7 +506,10 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
             </div>
 
             <div className="md:col-span-2 bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit">
-              <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 mb-4 pb-2 border-b">Operational Catalog Controller</h3>
+              <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 mb-4 pb-2 border-b flex items-center space-x-1.5">
+                <Layers className="w-4 h-4 text-[#f68b1e]" />
+                <span>Operational Catalog Controller</span>
+              </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
@@ -534,7 +549,7 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
                                 className="text-gray-400 hover:text-green-600 transition-colors"
                                 title="Edit Product Info"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Edit3 className="w-4 h-4" />
                               </button>
                               <button 
                                 onClick={() => handleDeleteProduct(p.id)} 
