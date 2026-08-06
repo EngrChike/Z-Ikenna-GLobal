@@ -1,33 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './utils/supabaseClient';
-import { ShieldCheck, Trash2, Pencil, LogOut } from 'lucide-react';
+import { Trash2, Pencil, LogOut, FolderPlus } from 'lucide-react';
 
-export default function AdminPortal({ products, fetchProducts, setView }) {
-  // REAL SUPABASE AUTHENTICATION STATES
+export default function AdminPortal({ products, categories, fetchProducts, fetchCategories, setView }) {
   const [session, setSession] = useState(null);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Form states (used for both Add and Edit)
+  // Category creation state
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryCreating, setCategoryCreating] = useState(false);
+
+  // Product form states
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  // Edit target tracker
   const [editingProduct, setEditingProduct] = useState(null);
 
   useEffect(() => {
-    // Check existing active Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    // Listen for auth state changes (login/logout events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -35,7 +36,6 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // SECURE SUPABASE AUTH LOGIN
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -60,14 +60,36 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
     }
   };
 
-  // LOGOUT HANDLER
   const handleAdminLogout = async () => {
     await supabase.auth.signOut();
     cancelEdit();
     setView('client');
   };
 
-  // HELPER FUNCTION: AUTOMATIC IMAGE COMPRESSOR
+  // CREATE CATEGORY HANDLER
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+
+    setCategoryCreating(true);
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .insert([{ name: newCategoryName.trim() }]);
+
+      if (error) throw error;
+
+      setNewCategoryName('');
+      await fetchCategories();
+      alert('Category created successfully!');
+    } catch (err) {
+      console.error(err);
+      alert(`Category Error: ${err.message}`);
+    } finally {
+      setCategoryCreating(false);
+    }
+  };
+
   const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -154,6 +176,7 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
     setName(product.name);
     setPrice(product.price);
     setQuantity(product.quantity);
+    setCategoryId(product.category_id || '');
     setDescription(product.description || '');
     setImageFile(null);
   };
@@ -163,11 +186,11 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
     setName('');
     setPrice('');
     setQuantity('');
+    setCategoryId('');
     setDescription('');
     setImageFile(null);
   };
 
-  // ADD PRODUCT
   const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!name || !price || !quantity) return;
@@ -211,7 +234,8 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
         price: parseFloat(price),
         image_url: image_url,
         quantity: parsedQty,
-        stock_status: parsedQty > 0
+        stock_status: parsedQty > 0,
+        category_id: categoryId ? parseInt(categoryId) : null
       };
 
       const { error: insErr } = await supabase.from('products').insert([payload]);
@@ -220,6 +244,7 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
       setName('');
       setPrice('');
       setQuantity('');
+      setCategoryId('');
       setDescription('');
       setImageFile(null);
       
@@ -233,7 +258,6 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
     }
   };
 
-  // UPDATE PRODUCT
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     if (!editingProduct) return;
@@ -274,7 +298,8 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
         price: parseFloat(price),
         image_url: image_url,
         quantity: parsedQty,
-        stock_status: parsedQty > 0
+        stock_status: parsedQty > 0,
+        category_id: categoryId ? parseInt(categoryId) : null
       };
 
       const { error: updErr } = await supabase
@@ -353,126 +378,176 @@ export default function AdminPortal({ products, fetchProducts, setView }) {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit">
-              <div className="flex justify-between items-center pb-2 border-b mb-4">
-                <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">
-                  {editingProduct ? 'Update Cosmetics Product' : 'Add New Product'}
-                </h3>
-                {editingProduct && (
+            <div className="space-y-6">
+              {/* CREATE CATEGORY CARD */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex items-center space-x-2 pb-2 border-b mb-4">
+                  <FolderPlus className="w-4 h-4 text-[#f68b1e]" />
+                  <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">Create New Category</h3>
+                </div>
+                <form onSubmit={handleCreateCategory} className="space-y-3">
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Oils, Lotions, Gels, Soaps" 
+                    value={newCategoryName} 
+                    onChange={e => setNewCategoryName(e.target.value)} 
+                    className="w-full border p-2 text-xs rounded-lg bg-white text-black" 
+                    required 
+                  />
                   <button 
-                    onClick={cancelEdit} 
-                    className="text-xs text-red-500 hover:text-red-700 font-bold hover:underline"
+                    type="submit" 
+                    disabled={categoryCreating}
+                    className="w-full bg-zinc-900 text-white text-xs py-2 rounded-lg font-bold uppercase hover:bg-zinc-800 transition-all"
                   >
-                    Cancel Edit
+                    {categoryCreating ? 'Creating...' : 'Add Category'}
                   </button>
-                )}
+                </form>
               </div>
-              
-              <form onSubmit={editingProduct ? handleUpdateProduct : handleAddProduct} className="space-y-3.5">
-                <input 
-                  type="text" 
-                  placeholder="Product Title" 
-                  value={name} 
-                  onChange={e => setName(e.target.value)} 
-                  className="w-full border p-2 text-xs rounded-lg bg-white text-black" 
-                  required 
-                />
-                <div className="grid grid-cols-2 gap-3">
+
+              {/* ADD/EDIT PRODUCT CARD */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-center pb-2 border-b mb-4">
+                  <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">
+                    {editingProduct ? 'Update Product' : 'Add New Product'}
+                  </h3>
+                  {editingProduct && (
+                    <button 
+                      onClick={cancelEdit} 
+                      className="text-xs text-red-500 hover:text-red-700 font-bold hover:underline"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
+                
+                <form onSubmit={editingProduct ? handleUpdateProduct : handleAddProduct} className="space-y-3.5">
                   <input 
-                    type="number" 
-                    placeholder="Price (#)" 
-                    value={price} 
-                    onChange={e => setPrice(e.target.value)} 
+                    type="text" 
+                    placeholder="Product Title" 
+                    value={name} 
+                    onChange={e => setName(e.target.value)} 
                     className="w-full border p-2 text-xs rounded-lg bg-white text-black" 
                     required 
                   />
-                  <input 
-                    type="number" 
-                    placeholder="Stock Qty" 
-                    value={quantity} 
-                    onChange={e => setQuantity(e.target.value)} 
-                    className="w-full border p-2 text-xs rounded-lg bg-white text-black" 
-                    required 
+                  <div className="grid grid-cols-2 gap-3">
+                    <input 
+                      type="number" 
+                      placeholder="Price (#)" 
+                      value={price} 
+                      onChange={e => setPrice(e.target.value)} 
+                      className="w-full border p-2 text-xs rounded-lg bg-white text-black" 
+                      required 
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="Stock Qty" 
+                      value={quantity} 
+                      onChange={e => setQuantity(e.target.value)} 
+                      className="w-full border p-2 text-xs rounded-lg bg-white text-black" 
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-400 block font-bold uppercase mb-1">Product Category</label>
+                    <select 
+                      value={categoryId} 
+                      onChange={e => setCategoryId(e.target.value)} 
+                      className="w-full border p-2 text-xs rounded-lg bg-white text-black focus:outline-none focus:border-[#f68b1e]"
+                    >
+                      <option value="">-- Uncategorized --</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <textarea 
+                    placeholder="Description" 
+                    value={description} 
+                    onChange={e => setDescription(e.target.value)} 
+                    className="w-full border p-2 text-xs rounded-lg h-14 bg-white text-black" 
                   />
-                </div>
-                <textarea 
-                  placeholder="Description" 
-                  value={description} 
-                  onChange={e => setDescription(e.target.value)} 
-                  className="w-full border p-2 text-xs rounded-lg h-14 bg-white text-black" 
-                />
-                
-                <div className="space-y-1">
-                  <label className="text-[10px] text-gray-400 block font-bold uppercase">
-                    {editingProduct ? 'Change Product Image (Optional)' : 'Product Image (Required)'}
-                  </label>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={e => setImageFile(e.target.files[0])} 
-                    className="w-full text-xs text-gray-500" 
-                    required={!editingProduct}
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  disabled={uploading} 
-                  className="w-full bg-[#f68b1e] text-white text-xs py-2 rounded-lg font-bold uppercase hover:bg-[#e07a16] transition-all"
-                >
-                  {uploading ? 'Processing...' : editingProduct ? 'Save Updates' : 'Publish Product'}
-                </button>
-              </form>
+                  
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-gray-400 block font-bold uppercase">
+                      {editingProduct ? 'Change Product Image (Optional)' : 'Product Image (Required)'}
+                    </label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={e => setImageFile(e.target.files[0])} 
+                      className="w-full text-xs text-gray-500" 
+                      required={!editingProduct}
+                    />
+                  </div>
+                  
+                  <button 
+                    type="submit" 
+                    disabled={uploading} 
+                    className="w-full bg-[#f68b1e] text-white text-xs py-2 rounded-lg font-bold uppercase hover:bg-[#e07a16] transition-all"
+                  >
+                    {uploading ? 'Processing...' : editingProduct ? 'Save Updates' : 'Publish Product'}
+                  </button>
+                </form>
+              </div>
             </div>
 
-            <div className="md:col-span-2 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <div className="md:col-span-2 bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit">
               <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 mb-4 pb-2 border-b">Operational Catalog Controller</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="bg-gray-50 text-gray-400 font-bold border-b">
                       <th className="p-2.5">Item Info</th>
+                      <th className="p-2.5">Category</th>
                       <th className="p-2.5">Price</th>
                       <th className="p-2.5 text-center">In-Stock Units</th>
                       <th className="p-2.5 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {products.map((p) => (
-                      <tr key={p.id} className={`hover:bg-gray-50/50 ${editingProduct?.id === p.id ? 'bg-orange-50/50' : ''}`}>
-                        <td className="p-2.5 flex items-center space-x-2">
-                          <img src={p.image_url} alt="" className="w-8 h-8 object-cover rounded border" />
-                          <span className="font-bold text-gray-900 line-clamp-1">{p.name}</span>
-                        </td>
-                        <td className="p-2.5 font-bold text-gray-700">#{p.price.toLocaleString()}</td>
-                        <td className="p-2.5 text-center">
-                          <input 
-                            type="number" 
-                            value={p.quantity !== null ? p.quantity : (p.stock_status ? 10 : 0)} 
-                            onChange={(e) => handleUpdateStockVolume(p.id, e.target.value)}
-                            className="w-14 border text-center p-0.5 rounded font-bold text-xs bg-white text-black"
-                          />
-                        </td>
-                        <td className="p-2.5 text-center">
-                          <div className="flex items-center justify-center space-x-3">
-                            <button 
-                              onClick={() => startEditProduct(p)} 
-                              className="text-gray-400 hover:text-green-600 transition-colors"
-                              title="Edit Product Info"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteProduct(p.id)} 
-                              className="text-gray-400 hover:text-red-600 transition-colors"
-                              title="Delete Product"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {products.map((p) => {
+                      const matchedCat = categories.find(c => c.id === p.category_id);
+                      return (
+                        <tr key={p.id} className={`hover:bg-gray-50/50 ${editingProduct?.id === p.id ? 'bg-orange-50/50' : ''}`}>
+                          <td className="p-2.5 flex items-center space-x-2">
+                            <img src={p.image_url} alt="" className="w-8 h-8 object-cover rounded border" />
+                            <span className="font-bold text-gray-900 line-clamp-1">{p.name}</span>
+                          </td>
+                          <td className="p-2.5 text-gray-500 font-medium">
+                            {matchedCat ? matchedCat.name : <span className="text-gray-300">None</span>}
+                          </td>
+                          <td className="p-2.5 font-bold text-gray-700">#{p.price.toLocaleString()}</td>
+                          <td className="p-2.5 text-center">
+                            <input 
+                              type="number" 
+                              value={p.quantity !== null ? p.quantity : (p.stock_status ? 10 : 0)} 
+                              onChange={(e) => handleUpdateStockVolume(p.id, e.target.value)}
+                              className="w-14 border text-center p-0.5 rounded font-bold text-xs bg-white text-black"
+                            />
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <div className="flex items-center justify-center space-x-3">
+                              <button 
+                                onClick={() => startEditProduct(p)} 
+                                className="text-gray-400 hover:text-green-600 transition-colors"
+                                title="Edit Product Info"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteProduct(p.id)} 
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
