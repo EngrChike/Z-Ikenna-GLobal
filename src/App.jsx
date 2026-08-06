@@ -430,7 +430,7 @@ export default function App() {
         <AdminPortal 
           products={products} 
           categories={categories}
-          fetchProducts={fetchProducts} 
+          fetchProducts={fetchProductsAndCategories} 
           fetchCategories={fetchProductsAndCategories}
           setView={setView} 
         />
