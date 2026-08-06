@@ -9,9 +9,12 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Category creation state
+  // Category states
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoryCreating, setCategoryCreating] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [categoryActionLoading, setCategoryActionLoading] = useState(false);
 
   // Product form states
   const [name, setName] = useState('');
@@ -21,7 +24,6 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
   const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-
   const [editingProduct, setEditingProduct] = useState(null);
 
   useEffect(() => {
@@ -63,9 +65,11 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
   const handleAdminLogout = async () => {
     await supabase.auth.signOut();
     cancelEdit();
+    cancelEditCategory();
     setView('client');
   };
 
+  // --- CATEGORY HANDLERS ---
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
@@ -89,6 +93,56 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
     }
   };
 
+  const startEditCategory = (category) => {
+    setEditingCategory(category);
+    setEditCategoryName(category.name);
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategory(null);
+    setEditCategoryName('');
+  };
+
+  const handleUpdateCategory = async (e, id) => {
+    e.preventDefault();
+    if (!editCategoryName.trim()) return;
+    
+    setCategoryActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ name: editCategoryName.trim() })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      cancelEditCategory();
+      await fetchCategories();
+    } catch (err) {
+      console.error(err);
+      alert(`Category Update Error: ${err.message}`);
+    } finally {
+      setCategoryActionLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this category? Note: This might affect products linked to it.')) return;
+    
+    setCategoryActionLoading(true);
+    try {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) throw error;
+      await fetchCategories();
+    } catch (err) {
+      console.error(err);
+      alert(`Category Delete Error: ${err.message}`);
+    } finally {
+      setCategoryActionLoading(false);
+    }
+  };
+
+  // --- IMAGE & PRODUCT HANDLERS ---
   const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -381,13 +435,16 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
 
           <div className="grid md:grid-cols-3 gap-6">
             <div className="space-y-6">
-              {/* CREATE CATEGORY CARD */}
+              
+              {/* CATEGORY MANAGEMENT CARD */}
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div className="flex items-center space-x-2 pb-2 border-b mb-4">
                   <FolderPlus className="w-4 h-4 text-[#f68b1e]" />
-                  <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">Create New Category</h3>
+                  <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">Category Management</h3>
                 </div>
-                <form onSubmit={handleCreateCategory} className="space-y-3">
+                
+                {/* Create Form */}
+                <form onSubmit={handleCreateCategory} className="space-y-3 mb-5">
                   <input 
                     type="text" 
                     placeholder="e.g. Oils, Lotions, Gels, Soaps" 
@@ -404,6 +461,56 @@ export default function AdminPortal({ products, categories, fetchProducts, fetch
                     {categoryCreating ? 'Creating...' : 'Add Category'}
                   </button>
                 </form>
+
+                {/* Categories List */}
+                <div className="border-t pt-4">
+                  <h4 className="text-[10px] font-bold uppercase text-gray-500 mb-2">Existing Categories</h4>
+                  {categories.length === 0 ? (
+                    <p className="text-xs text-gray-400">No categories found.</p>
+                  ) : (
+                    <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {categories.map(cat => (
+                        <li key={cat.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100">
+                          {editingCategory?.id === cat.id ? (
+                            <form onSubmit={(e) => handleUpdateCategory(e, cat.id)} className="flex w-full space-x-2 items-center">
+                              <input
+                                type="text"
+                                value={editCategoryName}
+                                onChange={(e) => setEditCategoryName(e.target.value)}
+                                className="w-full border p-1 text-xs rounded bg-white text-black"
+                                autoFocus
+                              />
+                              <div className="flex flex-shrink-0 space-x-2">
+                                <button type="submit" disabled={categoryActionLoading} className="text-xs text-green-600 font-bold hover:underline">Save</button>
+                                <button type="button" onClick={cancelEditCategory} className="text-xs text-gray-500 font-bold hover:underline">Cancel</button>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="text-xs font-medium text-gray-700 truncate pr-2">{cat.name}</span>
+                              <div className="flex items-center space-x-2 flex-shrink-0">
+                                <button 
+                                  onClick={() => startEditCategory(cat)} 
+                                  className="text-gray-400 hover:text-green-600 transition-colors" 
+                                  title="Edit Category"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteCategory(cat.id)} 
+                                  className="text-gray-400 hover:text-red-600 transition-colors" 
+                                  title="Delete Category"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
 
               {/* ADD/EDIT PRODUCT CARD */}
