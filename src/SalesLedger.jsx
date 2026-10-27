@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Trash2, Pencil, Search, Folder, FolderOpen, Calendar, Clock, User, ChevronDown, ChevronRight, UserCheck, X, Image as ImageIcon, Key, ShieldAlert, Printer } from 'lucide-react';
+import { Trash2, Pencil, Search, Folder, FolderOpen, Calendar, Clock, User, ChevronDown, ChevronRight, UserCheck, X, Image as ImageIcon, Key, ShieldAlert, Printer, UserPlus } from 'lucide-react';
 
 export default function SalesLedger({ products, customers, fetchProducts, fetchCustomers, supabase, currentUser, activeBranchId }) {
   // Staging / Accumulator Cart State
@@ -18,6 +18,12 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
   // Editing Sale State
   const [editingSale, setEditingSale] = useState(null);
+
+  // Customer Management Modal/Form States for Editing & Deleting Customers
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [customerFormName, setCustomerFormName] = useState('');
+  const [customerFormPhone, setCustomerFormPhone] = useState('');
 
   // Adding Item State
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -143,6 +149,46 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       pendingAction();
       setPendingAction(null);
     }
+  };
+
+  // --- CUSTOMER EDIT & DELETE HANDLERS ---
+  const handleOpenEditCustomer = (cust) => {
+    setEditingCustomer(cust);
+    setCustomerFormName(cust.name || '');
+    setCustomerFormPhone(cust.phone || '');
+    setIsCustomerModalOpen(true);
+  };
+
+  const handleSaveCustomerChanges = async (e) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({ name: customerFormName.trim(), phone: customerFormPhone.trim() })
+        .eq('id', editingCustomer.id);
+      
+      if (error) throw error;
+      alert("Customer details updated successfully!");
+      setIsCustomerModalOpen(false);
+      setEditingCustomer(null);
+      if (fetchCustomers) fetchCustomers();
+    } catch (err) {
+      alert(`Error updating customer: ${err.message}`);
+    }
+  };
+
+  const handleDeleteCustomerRecord = (cust) => {
+    requestAdminAuth(async () => {
+      try {
+        const { error } = await supabase.from('customers').delete().eq('id', cust.id);
+        if (error) throw error;
+        alert("Customer record deleted successfully!");
+        if (fetchCustomers) fetchCustomers();
+      } catch (err) {
+        alert(`Error deleting customer: ${err.message}`);
+      }
+    });
   };
 
   const toggleMonth = (monthKey) => {
@@ -529,7 +575,33 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
         <form onSubmit={handleFinalizeSale} className="space-y-4">
           <div>
-            <label className="text-[10px] text-gray-400 font-bold block mb-1">Customer Type</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-[10px] text-gray-400 font-bold uppercase">Customer Type</label>
+              {ledgerForm.customerId !== 'walkin' && ledgerForm.customerId !== 'new' && (
+                <div className="space-x-2">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const cust = customers.find(c => String(c.id) === String(ledgerForm.customerId));
+                      if (cust) handleOpenEditCustomer(cust);
+                    }} 
+                    className="text-[10px] text-blue-600 hover:underline font-bold"
+                  >
+                    Edit Customer
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const cust = customers.find(c => String(c.id) === String(ledgerForm.customerId));
+                      if (cust) handleDeleteCustomerRecord(cust);
+                    }} 
+                    className="text-[10px] text-red-600 hover:underline font-bold"
+                  >
+                    Delete Customer
+                  </button>
+                </div>
+              )}
+            </div>
             <select 
               value={ledgerForm.customerId} 
               onChange={e => setLedgerForm({...ledgerForm, customerId: e.target.value})} 
@@ -963,6 +1035,51 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         </div>
       )}
 
+      {/* --- CUSTOMER EDIT MODAL --- */}
+      {isCustomerModalOpen && editingCustomer && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 space-y-4">
+            <h3 className="font-bold text-xs uppercase text-slate-800 border-b pb-2">Edit Customer Details</h3>
+            <form onSubmit={handleSaveCustomerChanges} className="space-y-3">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Customer Name</label>
+                <input 
+                  type="text" 
+                  value={customerFormName} 
+                  onChange={(e) => setCustomerFormName(e.target.value)} 
+                  className="w-full border p-2 text-xs rounded-lg" 
+                  required 
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Phone Number</label>
+                <input 
+                  type="text" 
+                  value={customerFormPhone} 
+                  onChange={(e) => setCustomerFormPhone(e.target.value)} 
+                  className="w-full border p-2 text-xs rounded-lg" 
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsCustomerModalOpen(false)} 
+                  className="w-1/2 bg-gray-100 py-2 text-xs font-bold rounded-lg uppercase"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="w-1/2 bg-black text-white py-2 text-xs font-bold rounded-lg uppercase"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 🔒 ADMIN PIN SECURITY MODAL */}
       {isPinModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -973,7 +1090,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
               </div>
               <div>
                 <h3 className="font-bold text-xs uppercase text-gray-800">Administrator Security</h3>
-                <p className="text-[11px] text-gray-500">Admin PIN required to edit/delete sale</p>
+                <p className="text-[11px] text-gray-500">Admin PIN required for secure actions</p>
               </div>
             </div>
 
