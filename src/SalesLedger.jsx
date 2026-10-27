@@ -69,7 +69,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       .slice(0, 50);
   }, [products, productSearchTerm]);
 
-  // Fetch sales history
+  // Fetch sales history with robust fallback for staff roles
   const fetchSalesHistory = async () => {
     try {
       let query = supabase
@@ -77,8 +77,11 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         .select('*')
         .order('id', { ascending: false });
 
+      // If user is not admin, filter by staff_id or staff_name to ensure history displays correctly
       if (currentUser?.role !== 'admin') {
-        query = query.eq('staff_id', currentUser?.id);
+        if (currentUser?.id) {
+          query = query.or(`staff_id.eq.${currentUser.id},staff_name.eq.${currentUser.full_name || currentUser.name}`);
+        }
       }
 
       if (activeBranchId && activeBranchId !== 'ALL') {
@@ -86,14 +89,17 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       }
 
       const { data, error } = await query;
-      if (!error && data) setSalesHistory(data);
+      if (error) throw error;
+      if (data) setSalesHistory(data);
     } catch (err) {
       console.error('Error fetching sales history:', err);
     }
   };
 
   useEffect(() => {
-    if (currentUser) fetchSalesHistory();
+    if (currentUser) {
+      fetchSalesHistory();
+    }
   }, [currentUser, activeBranchId]);
 
   // Sync cart to local storage
@@ -254,7 +260,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       const currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-      const targetBranchId = (!activeBranchId || activeBranchId === 'ALL') ? null : activeBranchId;
+      const targetBranchId = (!activeBranchId || activeBranchId === 'ALL') ? (currentUser?.branch_id || null) : activeBranchId;
 
       let targetCustomerId = null;
       let customerDisplayName = 'Walk-in Customer';
@@ -283,7 +289,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       }
 
       const staffId = editingSale ? (editingSale.staff_id || currentUser?.id) : currentUser?.id;
-      const staffName = editingSale ? (editingSale.staff_name || 'Staff') : (currentUser?.name || currentUser?.full_name || currentUser?.email || 'Staff');
+      const staffName = editingSale ? (editingSale.staff_name || 'Staff') : (currentUser?.full_name || currentUser?.name || 'Staff');
 
       const salePayload = {
         customer_id: targetCustomerId,
@@ -318,9 +324,10 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       setEditingSale(null);
       localStorage.removeItem('akuDonCart');
       
-      await fetchProducts();
-      await fetchCustomers();
+      if (fetchProducts) fetchProducts();
+      if (fetchCustomers) fetchCustomers();
       await fetchSalesHistory();
+      
       alert(editingSale ? 'Sale updated successfully!' : 'Sale saved successfully!');
     } catch (err) {
       alert(`Error saving sale: ${err.message}`);
@@ -335,8 +342,8 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       await revertSaleStockAndDebt(sale);
       await supabase.from('customer_history').delete().eq('id', sale.id);
       alert("Sale deleted successfully!");
-      await fetchProducts();
-      await fetchCustomers();
+      if (fetchProducts) fetchProducts();
+      if (fetchCustomers) fetchCustomers();
       await fetchSalesHistory();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -413,7 +420,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   }, [filteredSales]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
       {/* LEFT COLUMN: ACCUMULATION & SALE FORM */}
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit space-y-4">
         <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 pb-2 border-b flex justify-between items-center">
@@ -706,8 +713,8 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                                 
                                 {currentUser?.role === 'admin' && (
                                   <div className="flex items-center space-x-1 pl-2 border-l border-gray-300">
-                                    <button onClick={() => handleEditSale(sale)} className="p-1.5 text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors" title="Edit sale"><Pencil className="w-3 h-3" /></button>
-                                    <button onClick={() => handleDeleteSale(sale)} className="p-1.5 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors" title="Delete sale (restores stock)"><Trash2 className="w-3 h-3" /></button>
+                                    <button type="button" onClick={() => handleEditSale(sale)} className="p-1.5 text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors" title="Edit sale"><Pencil className="w-3 h-3" /></button>
+                                    <button type="button" onClick={() => handleDeleteSale(sale)} className="p-1.5 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors" title="Delete sale (restores stock)"><Trash2 className="w-3 h-3" /></button>
                                   </div>
                                 )}
                               </div>
