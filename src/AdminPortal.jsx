@@ -152,7 +152,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
     fetchStoreSettings();
   };
 
-  // --- SECURE PIN-BASED AUTHENTICATION HANDLER (DATABASE ONLY) ---
+  // --- ROBUST PIN AUTHENTICATION (AVOIDS PGRST116 ERROR) ---
   const handlePinAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -166,17 +166,19 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
     }
 
     try {
-      const { data: adminStaff, error } = await supabase
+      const { data, error } = await supabase
         .from('staff')
         .select('*')
         .eq('pin_code', enteredPin)
         .eq('role', 'admin')
-        .eq('is_active', true)
-        .maybeSingle();
+        .eq('is_active', true);
 
       if (error) throw error;
 
-      if (adminStaff) {
+      if (!data || data.length === 0) {
+        setAuthError('Incorrect or unauthorized administrator PIN code.');
+      } else {
+        const adminStaff = data[0];
         const sessionPayload = {
           user: adminStaff,
           authenticatedAt: new Date().toISOString()
@@ -186,8 +188,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
         localStorage.setItem('admin_pin_session', JSON.stringify(sessionPayload));
         setAdminPinInput('');
         await fetchAllAppData();
-      } else {
-        setAuthError('Incorrect or unauthorized administrator PIN code.');
       }
     } catch (err) {
       setAuthError(`Authentication error: ${err.message}`);
@@ -779,7 +779,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
   const hqProductsForTransfer = products.filter(p => (!p.branch_id || p.branch_id === '') && !p.is_archived && parseInt(p.quantity) > 0);
   const activeSelectedArray = Object.values(selectedBatchItems).filter(i => i.selected);
 
-  // --- ACCÈS RESTREINT LOGIN SCREEN ---
+  // --- RESTRICTED ACCESS LOGIN SCREEN (ENGLISH & ROBUST) ---
   if (!session) {
     return (
       <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center p-4 font-sans">
@@ -791,10 +791,10 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
 
           <div className="text-center mb-6">
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              Accès Restreint
+              Restricted Access
             </h2>
             <p className="text-xs text-slate-400 font-medium mt-1">
-              Veuillez entrer votre code PIN
+              Please enter your admin PIN code
             </p>
             {authError && (
               <p className="text-red-500 text-xs mt-3 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
@@ -821,7 +821,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
               disabled={authLoading}
               className="w-full bg-black hover:bg-slate-800 text-white text-xs font-black py-3.5 rounded-2xl uppercase tracking-widest transition-all cursor-pointer shadow-md"
             >
-              {authLoading ? 'CONNEXION...' : 'SE CONNECTER'}
+              {authLoading ? 'SIGNING IN...' : 'SIGN IN'}
             </button>
           </form>
 
@@ -831,7 +831,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
               onClick={() => setView && setView('client')}
               className="text-xs text-slate-400 font-medium hover:text-slate-600 underline cursor-pointer"
             >
-              Retour à la boutique publique
+              Return to public storefront
             </button>
           </div>
         </div>
