@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Trash2, Pencil, Search, Folder, FolderOpen, Calendar, Clock, User, ChevronDown, ChevronRight, UserCheck, X, Image as ImageIcon, Key, ShieldAlert } from 'lucide-react';
+import { Trash2, Pencil, Search, Folder, FolderOpen, Calendar, Clock, User, ChevronDown, ChevronRight, UserCheck, X, Image as ImageIcon, Key, ShieldAlert, Printer } from 'lucide-react';
 
 export default function SalesLedger({ products, customers, fetchProducts, fetchCustomers, supabase, currentUser, activeBranchId }) {
   // Staging / Accumulator Cart State
@@ -38,6 +38,9 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
   // Search & History Filtering State
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Invoice Modal State
+  const [activeInvoiceSale, setActiveInvoiceSale] = useState(null);
   
   const currentMonthKey = useMemo(() => {
     const now = new Date();
@@ -312,11 +315,13 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
       let targetCustomerId = null;
       let customerDisplayName = 'Walk-in Customer';
+      let customerPhone = '';
 
       if (ledgerForm.customerId === 'new') {
+        customerPhone = ledgerForm.newPhone.trim() || '';
         const { data: newCustData, error: custErr } = await supabase.from('customers').insert([{
           name: ledgerForm.newName.trim() || 'Walk-in Customer',
-          phone: ledgerForm.newPhone.trim() || '',
+          phone: customerPhone,
           total_debt: balance,
           branch_id: targetBranchId
         }]).select().single();
@@ -329,6 +334,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         const existingCust = customers.find(c => String(c.id) === String(ledgerForm.customerId));
         if (existingCust) {
           customerDisplayName = existingCust.name;
+          customerPhone = existingCust.phone || '';
           const currentDebt = parseFloat(existingCust.totalDebt) || 0;
           const newTotalDebt = currentDebt + balance;
           
@@ -353,6 +359,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         items: cartItems,
         branch_id: targetBranchId,
         customer_name: customerDisplayName,
+        customer_phone: customerPhone,
         date: editingSale ? (editingSale.date || currentDate) : currentDate,
         time: editingSale ? (editingSale.time || currentTime) : currentTime,
         month_key: editingSale ? (editingSale.month_key || monthKey) : monthKey,
@@ -445,7 +452,11 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   const filteredSales = useMemo(() => {
     return salesHistory.map(item => {
       const cust = customers.find(c => String(c.id) === String(item.customer_id));
-      return { ...item, displayCustomer: item.customer_name || (cust ? cust.name : 'Walk-in Customer') };
+      return { 
+        ...item, 
+        displayCustomer: item.customer_name || (cust ? cust.name : 'Walk-in Customer'),
+        displayPhone: item.customer_phone || (cust ? cust.phone : 'N/A')
+      };
     }).filter(item => {
       if (!searchTerm) return true;
       const term = searchTerm.toLowerCase();
@@ -459,37 +470,26 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   }, [salesHistory, customers, searchTerm]);
 
   // --- TODAY'S STATS & MONTHLY ARCHIVES LOGIC ---
-  const { todayStats, monthlyArchives } = useMemo(() => {
+  const { todayStats } = useMemo(() => {
     const now = new Date();
     const shiftStart = new Date(now);
     if (now.getHours() < 6) shiftStart.setDate(shiftStart.getDate() - 1); 
     shiftStart.setHours(6, 0, 0, 0);
 
     const todayData = {};
-    const archives = {};
-
     salesHistory.forEach(sale => {
       const saleDate = new Date(sale.created_at || sale.date);
       const staffName = sale.staff_name || 'Staff';
       const total = sale.total || 0;
 
-      // Today's Sales since 06:00 AM check
       if (saleDate >= shiftStart) {
         if (!todayData[staffName]) todayData[staffName] = { count: 0, total: 0 };
         todayData[staffName].count += 1;
         todayData[staffName].total += total;
       }
-
-      // Monthly Archives Logic
-      const { key: monthKey, label: monthLabel } = getMonthGroup(sale);
-      if (!archives[monthKey]) archives[monthKey] = { label: monthLabel, staffData: {} };
-      if (!archives[monthKey].staffData[staffName]) archives[monthKey].staffData[staffName] = { count: 0, total: 0 };
-      
-      archives[monthKey].staffData[staffName].count += 1;
-      archives[monthKey].staffData[staffName].total += total;
     });
 
-    return { todayStats: todayData, monthlyArchives: archives };
+    return { todayStats: todayData };
   }, [salesHistory]);
 
   const groupedSalesByMonth = useMemo(() => {
@@ -522,7 +522,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
               <p className="text-[10px] text-amber-700">Original Staff: <strong>{editingSale.staff_name || 'Unknown'}</strong></p>
             </div>
             <button type="button" onClick={handleCancelEdit} className="p-1 text-amber-800 hover:bg-amber-200 rounded">
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4"/>
             </button>
           </div>
         )}
@@ -586,7 +586,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                             <img src={p.image_url} alt={p.name} className="w-8 h-8 rounded-md object-cover border border-gray-200 mr-2.5 flex-shrink-0" />
                           ) : (
                             <div className="w-8 h-8 rounded-md bg-gray-100 border border-gray-200 mr-2.5 flex items-center justify-center flex-shrink-0">
-                              <ImageIcon className="w-4 h-4 text-gray-400" />
+                              <ImageIcon className="w-4 h-4 text-gray-400"/>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
@@ -640,7 +640,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                                 <img src={item.image_url} alt={item.name} className="w-8 h-8 rounded object-cover border border-gray-200 flex-shrink-0" />
                               ) : (
                                 <div className="w-8 h-8 rounded bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
-                                  <ImageIcon className="w-4 h-4 text-gray-300" />
+                                  <ImageIcon className="w-4 h-4 text-gray-300"/>
                                 </div>
                               )}
                               <div className="font-bold text-gray-800 leading-tight">
@@ -656,7 +656,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                           </td>
                           <td className="p-2 text-center">
                             <button type="button" onClick={() => handleRemoveFromCart(index)} className="text-red-500 hover:text-red-700 p-1">
-                              <Trash2 className="w-3.5 h-3.5 inline" />
+                              <Trash2 className="w-3.5 h-3.5 inline"/>
                             </button>
                           </td>
                         </tr>
@@ -703,10 +703,10 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       {/* RIGHT COLUMN: MONTHLY FOLDERS & SALES SEARCH */}
       <div className="lg:col-span-2 space-y-4">
         
-        {/* TODAY'S SALES & MONTHLY ARCHIVES PREVIEW SUMMARY */}
+        {/* TODAY'S SALES SUMMARY */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
           <h3 className="font-bold text-xs uppercase text-gray-700 pb-2 border-b flex items-center">
-            <Clock className="w-4 h-4 mr-2 text-orange-500" /> 
+            <Clock className="w-4 h-4 mr-2 text-orange-500"/> 
             Today's Sales (Since 06:00 AM)
           </h3>
           
@@ -726,11 +726,11 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b">
             <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 flex items-center gap-1.5">
-              <ShieldAlert className="w-4 h-4 text-orange-600" /> Sales History & Monthly Archives (PIN Required for Edits/Deletes)
+              <ShieldAlert className="w-4 h-4 text-orange-600"/> Sales History & Monthly Archives (PIN Required for Edits/Deletes)
             </h3>
 
             <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400"/>
               <input 
                 type="text" 
                 placeholder="Search (item, date, staff, batch...)" 
@@ -755,7 +755,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                       className={`w-full flex items-center justify-between p-3.5 text-left transition-colors ${isOpen ? 'bg-orange-50/60 border-b' : 'bg-gray-50 hover:bg-gray-100'}`}
                     >
                       <div className="flex items-center space-x-2.5">
-                        {isOpen ? <FolderOpen className="w-5 h-5 text-orange-600" /> : <Folder className="w-5 h-5 text-gray-400" />}
+                        {isOpen ? <FolderOpen className="w-5 h-5 text-orange-600"/> : <Folder className="w-5 h-5 text-gray-400"/>}
                         <div>
                           <span className="font-black text-xs uppercase text-gray-800 block">Sales Folder: {group.label}</span>
                           <span className="text-[10px] text-gray-500 font-medium">{group.items.length} transaction(s)</span>
@@ -767,7 +767,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                           <span className="text-xs font-bold text-gray-700 block">#{group.totalSales.toLocaleString()}</span>
                           <span className="text-[9px] text-green-600 font-bold block">Collected: #{group.totalPaid.toLocaleString()}</span>
                         </div>
-                        {isOpen ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                        {isOpen ? <ChevronDown className="w-4 h-4 text-gray-500"/> : <ChevronRight className="w-4 h-4 text-gray-400"/>}
                       </div>
                     </button>
 
@@ -778,11 +778,11 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                             
                             <div className="flex justify-between items-center text-gray-500 text-[10px] pb-1 border-b border-gray-100">
                               <div className="flex items-center flex-wrap gap-2">
-                                <span className="flex items-center font-bold text-gray-700"><Calendar className="w-3 h-3 mr-1 text-orange-500" />{sale.date || 'N/A'}</span>
-                                <span className="flex items-center font-bold text-gray-700"><Clock className="w-3 h-3 mr-1 text-orange-500" />{sale.time || sale.created_at?.slice(11, 16) || '--:--'}</span>
-                                <span className="flex items-center font-bold text-gray-700 bg-gray-200 px-2 py-0.5 rounded"><UserCheck className="w-3 h-3 mr-1 text-blue-600" />{sale.staff_name || 'Staff'}</span>
+                                <span className="flex items-center font-bold text-gray-700"><Calendar className="w-3 h-3 mr-1 text-orange-500"/>{sale.date || 'N/A'}</span>
+                                <span className="flex items-center font-bold text-gray-700"><Clock className="w-3 h-3 mr-1 text-orange-500"/>{sale.time || sale.created_at?.slice(11, 16) || '--:--'}</span>
+                                <span className="flex items-center font-bold text-gray-700 bg-gray-200 px-2 py-0.5 rounded"><UserCheck className="w-3 h-3 mr-1 text-blue-600"/>{sale.staff_name || 'Staff'}</span>
                               </div>
-                              <span className="flex items-center font-bold text-gray-800 bg-gray-200 px-2 py-0.5 rounded"><User className="w-3 h-3 mr-1" />{sale.displayCustomer}</span>
+                              <span className="flex items-center font-bold text-gray-800 bg-gray-200 px-2 py-0.5 rounded"><User className="w-3 h-3 mr-1"/>{sale.displayCustomer}</span>
                             </div>
 
                             <div className="pt-1">
@@ -794,7 +794,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                                         <img src={item.image_url} alt={item.name} className="w-8 h-8 rounded object-cover border border-gray-200 flex-shrink-0" />
                                       ) : (
                                         <div className="w-8 h-8 rounded bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
-                                          <ImageIcon className="w-3 h-3 text-gray-400" />
+                                          <ImageIcon className="w-3 h-3 text-gray-400"/>
                                         </div>
                                       )}
                                       <div className="flex-1 min-w-0">
@@ -810,7 +810,14 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                             </div>
 
                             <div className="flex justify-between items-center pt-2 mt-1 border-t border-gray-100 text-[11px]">
-                              <span className="text-gray-400 text-[10px]">Total Items: <strong className="text-gray-600">{sale.qty || '-'}</strong></span>
+                              <button 
+                                type="button" 
+                                onClick={() => setActiveInvoiceSale(sale)}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-md flex items-center space-x-1 transition-colors"
+                              >
+                                <Printer className="w-3 h-3"/>
+                                <span>Print Invoice</span>
+                              </button>
                               
                               <div className="flex items-center space-x-3">
                                 <span>Invoice: <strong>#{sale.total?.toLocaleString()}</strong></span>
@@ -818,8 +825,8 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                                 
                                 {currentUser?.role === 'admin' && (
                                   <div className="flex items-center space-x-1 pl-2 border-l border-gray-300">
-                                    <button type="button" onClick={() => handleEditSale(sale)} className="p-1.5 text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors" title="Edit sale (Admin PIN required)"><Pencil className="w-3 h-3" /></button>
-                                    <button type="button" onClick={() => handleDeleteSale(sale)} className="p-1.5 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors" title="Delete sale (Admin PIN required)"><Trash2 className="w-3 h-3" /></button>
+                                    <button type="button" onClick={() => handleEditSale(sale)} className="p-1.5 text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors" title="Edit sale (Admin PIN required)"><Pencil className="w-3 h-3"/></button>
+                                    <button type="button" onClick={() => handleDeleteSale(sale)} className="p-1.5 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors" title="Delete sale (Admin PIN required)"><Trash2 className="w-3 h-3"/></button>
                                   </div>
                                 )}
                               </div>
@@ -840,13 +847,129 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         </div>
       </div>
 
+      {/* --- INVOICE PRINTING MODAL --- */}
+      {activeInvoiceSale && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200 space-y-6 max-h-[90vh] overflow-y-auto">
+            
+            {/* INVOICE PREVIEW CONTAINER */}
+            <div id="printable-invoice" className="bg-white p-6 border rounded-xl space-y-6 text-slate-800">
+              
+              {/* Header */}
+              <div className="flex justify-between items-start border-b pb-4">
+                <div>
+                  <h1 className="text-lg font-black tracking-wider uppercase text-slate-900">Z IKENNA GLOBAL RESOURCES</h1>
+                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">B56, ABIA PLAZA BBA TRADE FAIR COMPLEX UPSTAIR, LAGOS NIGERIA</p>
+                  <p className="text-[11px] text-slate-500 font-semibold">WhatsApp: +2347060433000</p>
+                </div>
+                <div className="text-right">
+                  <span className="bg-slate-900 text-white font-bold text-xs px-3 py-1 rounded uppercase tracking-wider">INVOICE</span>
+                  <p className="text-[11px] font-mono font-bold text-slate-600 mt-2">Ref: #{activeInvoiceSale.id}</p>
+                  <p className="text-[10px] text-slate-400">{activeInvoiceSale.date} | {activeInvoiceSale.time || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Client Details */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Customer Name</p>
+                  <p className="font-bold text-slate-800">{activeInvoiceSale.displayCustomer}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Phone Number</p>
+                  <p className="font-bold text-slate-800">{activeInvoiceSale.displayPhone || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div>
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 font-bold border-b">
+                      <th className="p-2.5">Item Description</th>
+                      <th className="p-2.5 text-center">Qty</th>
+                      <th className="p-2.5 text-right">Price (#)</th>
+                      <th className="p-2.5 text-right">Amount (#)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {activeInvoiceSale.items && activeInvoiceSale.items.length > 0 ? (
+                      activeInvoiceSale.items.map((item, i) => (
+                        <tr key={i}>
+                          <td className="p-2.5 font-medium">
+                            {item.name} <span className="text-[10px] text-orange-600 block">Batch: {item.batch}</span>
+                          </td>
+                          <td className="p-2.5 text-center font-bold">{item.qty}</td>
+                          <td className="p-2.5 text-right">#{item.price?.toLocaleString()}</td>
+                          <td className="p-2.5 text-right font-bold">#{(item.price * item.qty).toLocaleString()}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" className="p-2.5 text-center text-slate-500">{activeInvoiceSale.goods}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Financial Totals */}
+              <div className="border-t pt-4 space-y-2 text-xs flex flex-col items-end">
+                <div className="w-64 space-y-1.5">
+                  <div className="flex justify-between text-slate-600 font-semibold">
+                    <span>Total Amount:</span>
+                    <span className="font-bold">#{(activeInvoiceSale.total || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-600 font-semibold">
+                    <span>Amount Paid:</span>
+                    <span className="font-bold">#{(activeInvoiceSale.paid || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-600 font-extrabold border-t pt-1.5 text-sm">
+                    <span>Balance Due:</span>
+                    <span>#{Math.max(0, (activeInvoiceSale.total || 0) - (activeInvoiceSale.paid || 0)).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <div className="text-center pt-4 border-t text-[10px] text-slate-400 font-medium">
+                Thank you for your patronage! • Z Ikenna Global Resources
+              </div>
+
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveInvoiceSale(null)}
+                className="w-1/2 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-xl uppercase transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.print();
+                }}
+                className="w-1/2 py-2.5 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-xl uppercase transition-colors flex items-center justify-center space-x-2 shadow-sm"
+              >
+                <Printer className="w-4 h-4"/>
+                <span>Print / Save PDF</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* 🔒 ADMIN PIN SECURITY MODAL */}
       {isPinModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-150">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
-                <Key className="w-5 h-5" />
+                <Key className="w-5 h-5"/>
               </div>
               <div>
                 <h3 className="font-bold text-xs uppercase text-gray-800">Administrator Security</h3>
