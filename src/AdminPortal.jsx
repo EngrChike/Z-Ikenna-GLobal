@@ -16,8 +16,7 @@ import {
   Edit3,
   Trash2,
   Archive,
-  UserPlus,
-  LogIn
+  Lock
 } from 'lucide-react';
 import SalesLedger from './SalesLedger';
 import InventoryManagement from './components/InventoryManagement';
@@ -29,12 +28,8 @@ import StaffManagement from './StaffManagement';
 export default function AdminPortal({ currentUser, supabase, setView }) {
   // --- AUTHENTICATION & SESSION STATES ---
   const [session, setSession] = useState(null);
-  const [isSignUpMode, setIsSignUpMode] = useState(false);
-  const [adminFullName, setAdminFullName] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPinInput, setAdminPinInput] = useState('');
   const [authError, setAuthError] = useState('');
-  const [authSuccess, setAuthSuccess] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
   // --- NAVIGATION TAB STATE ---
@@ -111,20 +106,20 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
 
   const activeBranchId = viewingBranch;
 
-  // --- INITIAL AUTH & DATA FETCHING ---
+  // --- INITIAL SESSION RESTORATION ---
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchAllAppData();
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchAllAppData();
-    });
+    const savedSession = localStorage.getItem('admin_pin_session');
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession);
+        setSession(parsed);
+        fetchAllAppData();
+      } catch (e) {
+        localStorage.removeItem('admin_pin_session');
+      }
+    }
 
     return () => {
-      subscription.unsubscribe();
       if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
     };
   }, []);
@@ -157,66 +152,52 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
     fetchStoreSettings();
   };
 
-  // --- AUTHENTICATION HANDLERS ---
-  const handleAdminAuth = async (e) => {
+  // --- SECURE PIN-BASED AUTHENTICATION HANDLER (DATABASE ONLY) ---
+  const handlePinAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
-    setAuthSuccess('');
     setAuthLoading(true);
 
+    const enteredPin = adminPinInput.trim();
+    if (!enteredPin) {
+      setAuthError('Please enter your admin PIN.');
+      setAuthLoading(false);
+      return;
+    }
+
     try {
-      if (isSignUpMode) {
-        const { data, error } = await supabase.auth.signUp({
-          email: adminEmail.trim(),
-          password: adminPassword,
-          options: {
-            data: {
-              full_name: adminFullName.trim() || 'Admin User',
-              role: 'admin'
-            }
-          }
-        });
+      const { data: adminStaff, error } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('pin_code', enteredPin)
+        .eq('role', 'admin')
+        .eq('is_active', true)
+        .maybeSingle();
 
-        if (error) {
-          setAuthError(error.message);
-        } else if (data?.user) {
-          await supabase.from('staff').upsert({
-            full_name: adminFullName.trim() || 'Admin User',
-            pin_code: '1234',
-            role: 'admin',
-            is_active: true
-          }, { onConflict: 'full_name' }).catch(() => {});
+      if (error) throw error;
 
-          setAuthSuccess('Admin account created successfully! Signing in...');
-          setTimeout(() => {
-            setSession(data.session);
-            fetchAllAppData();
-          }, 1000);
-        }
+      if (adminStaff) {
+        const sessionPayload = {
+          user: adminStaff,
+          authenticatedAt: new Date().toISOString()
+        };
+
+        setSession(sessionPayload);
+        localStorage.setItem('admin_pin_session', JSON.stringify(sessionPayload));
+        setAdminPinInput('');
+        await fetchAllAppData();
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: adminEmail.trim(),
-          password: adminPassword,
-        });
-
-        if (error) {
-          setAuthError(error.message);
-        } else {
-          setAdminEmail('');
-          setAdminPassword('');
-          setSession(data.session);
-          fetchAllAppData();
-        }
+        setAuthError('Incorrect or unauthorized administrator PIN code.');
       }
     } catch (err) {
-      setAuthError('An unexpected authentication error occurred.');
+      setAuthError(`Authentication error: ${err.message}`);
     } finally {
       setAuthLoading(false);
     }
   };
 
   const handleAdminLogout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('admin_pin_session');
     setSession(null);
     if (setView) setView('client');
   };
@@ -714,7 +695,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
       const newLogRecord = {
         transfer_ref: transferRef,
         items: transferSummary,
-        created_by: session?.user?.email || 'Admin HQ',
+        created_by: session?.user?.full_name || 'Admin HQ',
         created_at: new Date().toISOString()
       };
 
@@ -798,59 +779,39 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
   const hqProductsForTransfer = products.filter(p => (!p.branch_id || p.branch_id === '') && !p.is_archived && parseInt(p.quantity) > 0);
   const activeSelectedArray = Object.values(selectedBatchItems).filter(i => i.selected);
 
-  // --- LOGIN / SIGN UP SCREEN FOR ADMIN AUTHENTICATION ---
+  // --- ACCÈS RESTREINT LOGIN SCREEN ---
   if (!session) {
     return (
-      <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 shadow-md">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
-              {isSignUpMode ? 'Create Admin Account' : 'Admin Portal Login'}
-            </h2>
-            <p className="text-xs text-gray-500 mt-1">
-              {isSignUpMode 
-                ? 'Register a new administrative account for Chike Global.' 
-                : 'Authenticate using your registered administrator credentials.'}
-            </p>
-            {authError && <p className="text-red-600 text-xs mt-3 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-200">{authError}</p>}
-            {authSuccess && <p className="text-emerald-600 text-xs mt-3 font-semibold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">{authSuccess}</p>}
+      <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-sm bg-white rounded-3xl border border-gray-100 p-8 shadow-xl flex flex-col items-center">
+          
+          <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6">
+            <Lock className="w-9 h-9 text-orange-600" />
           </div>
 
-          <form onSubmit={handleAdminAuth} className="space-y-4">
-            {isSignUpMode && (
-              <div>
-                <label className="text-[10px] font-extrabold uppercase text-gray-500 block mb-1">Full Name</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Engr Chike" 
-                  value={adminFullName} 
-                  onChange={e => setAdminFullName(e.target.value)} 
-                  className="w-full border p-2.5 rounded-xl text-xs bg-white text-black focus:outline-none focus:border-[#f68b1e]" 
-                  required 
-                />
-              </div>
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              Accès Restreint
+            </h2>
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              Veuillez entrer votre code PIN
+            </p>
+            {authError && (
+              <p className="text-red-500 text-xs mt-3 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
+                {authError}
+              </p>
             )}
+          </div>
 
+          <form onSubmit={handlePinAuthSubmit} className="w-full space-y-4">
             <div>
-              <label className="text-[10px] font-extrabold uppercase text-gray-500 block mb-1">Email Address</label>
-              <input 
-                type="email" 
-                placeholder="admin@chikeglobal.com" 
-                value={adminEmail} 
-                onChange={e => setAdminEmail(e.target.value)} 
-                className="w-full border p-2.5 rounded-xl text-xs bg-white text-black focus:outline-none focus:border-[#f68b1e]" 
-                required 
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold uppercase text-gray-500 block mb-1">Password</label>
               <input 
                 type="password" 
-                placeholder="••••••••" 
-                value={adminPassword} 
-                onChange={e => setAdminPassword(e.target.value)} 
-                className="w-full border p-2.5 rounded-xl text-xs bg-white text-black focus:outline-none focus:border-[#f68b1e]" 
+                placeholder="••••••" 
+                value={adminPinInput} 
+                onChange={e => setAdminPinInput(e.target.value)} 
+                autoFocus
+                className="w-full bg-amber-50/70 border-2 border-slate-900/10 focus:border-slate-900 text-slate-900 text-center text-xl tracking-[0.4em] font-mono py-3.5 rounded-2xl outline-none transition-all placeholder:text-slate-400 placeholder:tracking-normal" 
                 required 
               />
             </div>
@@ -858,25 +819,19 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
             <button 
               type="submit" 
               disabled={authLoading}
-              className="w-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold py-3 rounded-xl uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center space-x-2 shadow-sm"
+              className="w-full bg-black hover:bg-slate-800 text-white text-xs font-black py-3.5 rounded-2xl uppercase tracking-widest transition-all cursor-pointer shadow-md"
             >
-              {isSignUpMode ? <UserPlus className="w-4 h-4 text-amber-400" /> : <LogIn className="w-4 h-4 text-amber-400" />}
-              <span>{authLoading ? 'Processing...' : isSignUpMode ? 'Register Account' : 'Sign In'}</span>
+              {authLoading ? 'CONNEXION...' : 'SE CONNECTER'}
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+          <div className="mt-8 pt-2 text-center">
             <button
-              onClick={() => {
-                setIsSignUpMode(!isSignUpMode);
-                setAuthError('');
-                setAuthSuccess('');
-              }}
-              className="text-xs text-[#f68b1e] font-bold hover:underline cursor-pointer"
+              type="button"
+              onClick={() => setView && setView('client')}
+              className="text-xs text-slate-400 font-medium hover:text-slate-600 underline cursor-pointer"
             >
-              {isSignUpMode 
-                ? 'Already have an admin account? Sign In' 
-                : 'Need to create an admin account? Register'}
+              Retour à la boutique publique
             </button>
           </div>
         </div>
@@ -889,7 +844,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
     <div className="bg-[#f8fafc] text-slate-900 font-sans p-4 sm:p-6 lg:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         
-        {/* HEADER NAVIGATION & SESSION */}
         <div className="flex flex-col gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             
@@ -946,7 +900,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* LOW STOCK ALERT */}
               <button 
                 onClick={() => { setActiveTab('inventory'); setShowLowStockOnly(prev => !prev); }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
@@ -959,7 +912,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
                 <span>Critical: {lowStockProducts.length}</span>
               </button>
 
-              {/* BRANCH FILTER DROPDOWN */}
               <div className="flex items-center gap-2 border border-slate-200 px-3.5 py-2 rounded-xl bg-slate-50/80">
                 <ListFilter className="w-4 h-4 text-slate-400" />
                 <select 
@@ -973,7 +925,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
                 </select>
               </div>
 
-              {/* LOGOUT */}
               <button 
                 onClick={handleAdminLogout}
                 className="px-3 py-2 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center space-x-1.5 cursor-pointer"
@@ -985,7 +936,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
           </div>
         </div>
 
-        {/* FINANCIAL METRICS BAR */}
         <div className="space-y-3">
           <div className="flex justify-between items-center px-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -1028,14 +978,11 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
           </div>
         </div>
 
-        {/* TAB 1: INVENTORY & CATEGORY MANAGEMENT */}
         {activeTab === 'inventory' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* LEFT COLUMN: CATEGORIES & PRODUCT ENTRY */}
             <div className="space-y-6">
               
-              {/* CATEGORY MANAGEMENT CARD */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center space-x-2 pb-2 border-b mb-4">
                   <FolderPlus className="w-4 h-4 text-[#f68b1e]" />
@@ -1096,7 +1043,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
                 </div>
               </div>
 
-              {/* PRODUCT ADD / EDIT FORM */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex justify-between items-center pb-2 border-b mb-4">
                   <h3 className="font-bold text-xs uppercase tracking-wide text-slate-700">
@@ -1161,7 +1107,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
 
             </div>
 
-            {/* RIGHT COLUMN: INVENTORY TABLE CATALOG */}
             <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b gap-3">
                 <h3 className="font-bold text-xs uppercase tracking-wide text-slate-700 flex items-center">
@@ -1231,7 +1176,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
           </div>
         )}
 
-        {/* TAB 2: BRANCHES & HQ MANAGEMENT */}
         {activeTab === 'branches' && (
           <BranchManagement 
             branches={branches}
@@ -1248,7 +1192,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
           />
         )}
 
-        {/* TAB 3: SALES LEDGER */}
         {activeTab === 'customers' && (
           <SalesLedger 
             products={contextProducts}
@@ -1261,7 +1204,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
           />
         )}
 
-        {/* TAB 4: STOREFRONT PREVIEW */}
         {activeTab === 'storefront' && (
           <div className="space-y-6">
             <div className="bg-white p-5 rounded-2xl border border-emerald-500/30">
@@ -1315,7 +1257,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
           </div>
         )}
 
-        {/* TAB 5: STAFF MANAGEMENT */}
         {activeTab === 'staff' && (
           <StaffManagement 
             supabase={supabase}
@@ -1341,7 +1282,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
 
       </div>
 
-      {/* MULTI-PRODUCT BATCH TRANSFER MODAL */}
       <BatchTransferModal 
         batchTransferOpen={batchTransferOpen}
         setBatchTransferOpen={setBatchTransferOpen}
@@ -1359,7 +1299,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
         batchTransferLoading={batchTransferLoading}
       />
 
-      {/* TRANSFER HISTORY MODAL */}
       <TransferHistoryModal 
         isOpen={transferHistoryOpen}
         onClose={() => setTransferHistoryOpen(false)}
