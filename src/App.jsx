@@ -48,28 +48,42 @@ export default function App() {
     }
   };
 
+  // --- ROBUST PIN LOGIN HANDLER ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
     setIsLoading(true);
 
+    const cleanPin = pinInput.trim();
+    if (!cleanPin) {
+      setLoginError('Please enter a PIN code.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      // Query without .single() to avoid PGRST116 multi-row / single row errors
       const { data, error } = await supabase
         .from('staff')
         .select('*')
-        .eq('pin_code', pinInput.trim())
-        .maybeSingle();
+        .eq('pin_code', cleanPin);
 
-      if (error || !data) {
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
         setLoginError('Incorrect PIN code.');
-      } else if (!data.is_active) {
-        setLoginError('This account has been deactivated. Please contact an administrator.');
       } else {
-        setCurrentUser(data);
-        setPinInput('');
+        const activeUser = data.find(u => u.is_active) || data[0];
+
+        if (!activeUser.is_active) {
+          setLoginError('This account has been deactivated. Please contact an administrator.');
+        } else {
+          setCurrentUser(activeUser);
+          setPinInput('');
+        }
       }
     } catch (err) {
-      setLoginError('Server connection error.');
+      setLoginError(`Login error: ${err.message || 'Server connection issue'}`);
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +128,7 @@ export default function App() {
       const paid = parseFloat(amountPaid) || cartTotal;
       const debt = Math.max(0, cartTotal - paid);
 
-      // 1. Create or get customer
+      // 1. Create or retrieve customer
       let customerId = null;
       const { data: existingCust } = await supabase
         .from('customers')
@@ -138,7 +152,7 @@ export default function App() {
         customerId = newCust.id;
       }
 
-      // 2. Insert sale record into customer_history
+      // 2. Insert sale record (links staff_id & staff_name so Admin dashboard displays it)
       const salePayload = {
         customer_id: customerId,
         staff_id: currentUser.id,
@@ -154,7 +168,7 @@ export default function App() {
       const { error: saleErr } = await supabase.from('customer_history').insert([salePayload]);
       if (saleErr) throw saleErr;
 
-      // 3. Deduct product stock quantities in database
+      // 3. Deduct stock quantities in Supabase
       for (const item of cart) {
         const newStock = Math.max(0, item.quantity - item.qty);
         await supabase
