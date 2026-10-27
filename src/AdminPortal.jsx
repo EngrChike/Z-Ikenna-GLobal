@@ -16,7 +16,9 @@ import {
   Edit3,
   Trash2,
   Archive,
-  Lock
+  Lock,
+  X,
+  KeyRound
 } from 'lucide-react';
 import SalesLedger from './SalesLedger';
 import InventoryManagement from './components/InventoryManagement';
@@ -51,8 +53,12 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
   const [categoryActionLoading, setCategoryActionLoading] = useState(false);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
 
-  // --- FINANCIAL VISIBILITY STATES ---
+  // --- FINANCIAL VISIBILITY & PIN STATES ---
   const [showFinancials, setShowFinancials] = useState(false);
+  const [showFinancialPinModal, setShowFinancialPinModal] = useState(false);
+  const [financialPinInput, setFinancialPinInput] = useState('');
+  const [financialPinError, setFinancialPinError] = useState('');
+  const [financialPinLoading, setFinancialPinLoading] = useState(false);
   const autoHideTimerRef = useRef(null);
 
   // --- BRANCH & INVENTORY FILTER STATES ---
@@ -152,7 +158,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
     fetchStoreSettings();
   };
 
-  // --- ROBUST PIN AUTHENTICATION (AVOIDS PGRST116 ERROR) ---
+  // --- ROBUST PIN AUTHENTICATION ---
   const handlePinAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -403,15 +409,56 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
     }
   };
 
-  // --- FINANCIAL SECURITY & VISIBILITY ---
+  // --- SECURE FINANCIAL VISIBILITY & PIN VERIFICATION ---
   const handleToggleFinancialVisibility = () => {
     if (showFinancials) {
       setShowFinancials(false);
       if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
     } else {
-      setShowFinancials(true);
-      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
-      autoHideTimerRef.current = setTimeout(() => setShowFinancials(false), 10 * 60 * 1000);
+      // Prompt for admin password/PIN before showing figures
+      setShowFinancialPinModal(true);
+      setFinancialPinInput('');
+      setFinancialPinError('');
+    }
+  };
+
+  const handleVerifyFinancialPin = async (e) => {
+    e.preventDefault();
+    setFinancialPinError('');
+    setFinancialPinLoading(true);
+
+    const enteredPin = financialPinInput.trim();
+    if (!enteredPin) {
+      setFinancialPinError('Please enter your admin PIN.');
+      setFinancialPinLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('pin_code', enteredPin)
+        .eq('role', 'admin')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        setFinancialPinError('Incorrect admin PIN code.');
+      } else {
+        // PIN is correct, unlock financial figures
+        setShowFinancials(true);
+        setShowFinancialPinModal(false);
+        setFinancialPinInput('');
+
+        if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = setTimeout(() => setShowFinancials(false), 10 * 60 * 1000);
+      }
+    } catch (err) {
+      setFinancialPinError(`Verification error: ${err.message}`);
+    } finally {
+      setFinancialPinLoading(false);
     }
   };
 
@@ -779,7 +826,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
   const hqProductsForTransfer = products.filter(p => (!p.branch_id || p.branch_id === '') && !p.is_archived && parseInt(p.quantity) > 0);
   const activeSelectedArray = Object.values(selectedBatchItems).filter(i => i.selected);
 
-  // --- RESTRICTED ACCESS LOGIN SCREEN (ENGLISH & ROBUST) ---
+  // --- RESTRICTED ACCESS LOGIN SCREEN ---
   if (!session) {
     return (
       <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center p-4 font-sans">
@@ -1281,6 +1328,67 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
         )}
 
       </div>
+
+      {/* --- FINANCIAL PIN VERIFICATION MODAL --- */}
+      {showFinancialPinModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-sans">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center border-b border-slate-800">
+              <h3 className="text-xs font-black uppercase tracking-wider flex items-center space-x-2">
+                <KeyRound className="w-4 h-4 text-emerald-400" />
+                <span>Admin PIN Required</span>
+              </h3>
+              <button 
+                onClick={() => setShowFinancialPinModal(false)} 
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleVerifyFinancialPin} className="p-6 space-y-4">
+              <p className="text-xs text-slate-500 font-medium text-center">
+                Enter your admin PIN to unlock and view financial performance figures.
+              </p>
+
+              {financialPinError && (
+                <p className="text-red-500 text-xs font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100 text-center">
+                  {financialPinError}
+                </p>
+              )}
+
+              <div>
+                <input 
+                  type="password" 
+                  placeholder="••••••" 
+                  value={financialPinInput} 
+                  onChange={e => setFinancialPinInput(e.target.value)} 
+                  autoFocus
+                  className="w-full bg-amber-50/70 border-2 border-slate-900/10 focus:border-slate-900 text-slate-900 text-center text-xl tracking-[0.4em] font-mono py-3 rounded-2xl outline-none transition-all placeholder:text-slate-400 placeholder:tracking-normal" 
+                  required 
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFinancialPinModal(false)}
+                  className="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-3 rounded-xl font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={financialPinLoading}
+                  className="w-1/2 bg-black hover:bg-slate-800 text-white text-xs py-3 rounded-xl font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-sm"
+                >
+                  {financialPinLoading ? 'Verifying...' : 'Unlock'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <BatchTransferModal 
         batchTransferOpen={batchTransferOpen}
