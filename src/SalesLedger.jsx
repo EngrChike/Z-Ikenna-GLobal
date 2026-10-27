@@ -94,22 +94,32 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     try {
       let query = supabase
         .from('customer_history')
-        .select('*')
-        .order('id', { ascending: false });
+        .select('*');
 
       if (activeBranchId && activeBranchId !== 'ALL') {
         query = query.eq('branch_id', activeBranchId);
       }
 
       const { data, error } = await query;
-      if (error) throw error;
-      if (data) setSalesHistory(data);
+      if (error) {
+        console.error("Supabase fetch error:", error);
+        return;
+      }
+      
+      if (data) {
+        // Sort descending locally to support string dates or timestamps reliably
+        const sortedData = [...data].sort((a, b) => {
+          const dateA = new Date(a.created_at || a.date);
+          const dateB = new Date(b.created_at || b.date);
+          return dateB - dateA || (b.id - a.id);
+        });
+        setSalesHistory(sortedData);
+      }
     } catch (err) {
       console.error('Error fetching sales history:', err);
     }
   };
 
-  // Fixed: Always execute on load and when branch changes regardless of currentUser prop status
   useEffect(() => {
     fetchSalesHistory();
     fetchStaffList();
@@ -511,17 +521,15 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   // --- TODAY'S STATS & MONTHLY ARCHIVES LOGIC ---
   const { todayStats } = useMemo(() => {
     const now = new Date();
-    const shiftStart = new Date(now);
-    if (now.getHours() < 6) shiftStart.setDate(shiftStart.getDate() - 1); 
-    shiftStart.setHours(6, 0, 0, 0);
+    const todayString = now.toLocaleDateString();
 
     const todayData = {};
     salesHistory.forEach(sale => {
-      const saleDate = new Date(sale.created_at || sale.date);
+      const saleDateString = sale.date || (sale.created_at ? new Date(sale.created_at).toLocaleDateString() : '');
       const staffName = sale.staff_name || 'Staff';
       const total = sale.total || 0;
 
-      if (saleDate >= shiftStart) {
+      if (saleDateString === todayString) {
         if (!todayData[staffName]) todayData[staffName] = { count: 0, total: 0 };
         todayData[staffName].count += 1;
         todayData[staffName].total += total;
@@ -678,7 +686,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                 </div>
               </div>
 
-              <button type="button" onClick={handleAddToCart} disabled={!cartProductId} className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold py-2 px-3 rounded-lg uppercase tracking-wider transition-colors">
+              <button type="button" onClick={handleAddToCart} disabled={!cartProductId} className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold py-2 px-3 rounded-lg uppercase tracking-wider transition-colors cursor-pointer">
                 + Add to Cart
               </button>
             </div>
@@ -720,7 +728,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                             <input type="number" value={item.price} onChange={(e) => handleUpdateCartItemPrice(index, e.target.value)} className="w-16 border border-orange-300 text-right p-1 rounded font-bold text-xs text-orange-700" />
                           </td>
                           <td className="p-2 text-center">
-                            <button type="button" onClick={() => handleRemoveFromCart(index)} className="text-red-500 hover:text-red-700 p-1">
+                            <button type="button" onClick={() => handleRemoveFromCart(index)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer">
                               <Trash2 className="w-3.5 h-3.5 inline"/>
                             </button>
                           </td>
