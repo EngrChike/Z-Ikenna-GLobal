@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ClientApp from './ClientApp';
-import AdminApp from './AdminApp';
+import AdminPortal from './AdminPortal';
 import { supabase } from './utils/supabaseClient';
 
 export default function App() {
@@ -27,7 +27,11 @@ export default function App() {
           </button>
         </div>
         <div className="flex-grow">
-          <AdminApp currentUser={{ role: 'admin', full_name: 'Admin HQ' }} supabase={supabase} setView={() => { window.location.hash = ''; setIsAdminRoute(false); }} />
+          <AdminPortal 
+            currentUser={{ role: 'admin', full_name: 'Admin HQ' }} 
+            supabase={supabase} 
+            setView={() => { window.location.hash = ''; setIsAdminRoute(false); }} 
+          />
         </div>
       </div>
     );
