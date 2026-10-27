@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Trash2, Pencil, Search, Folder, FolderOpen, Calendar, Clock, User, ChevronDown, ChevronRight, UserCheck, X, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Pencil, Search, Folder, FolderOpen, Calendar, Clock, User, ChevronDown, ChevronRight, UserCheck, X, Image as ImageIcon, Key, ShieldAlert } from 'lucide-react';
 
 export default function SalesLedger({ products, customers, fetchProducts, fetchCustomers, supabase, currentUser, activeBranchId }) {
   // Staging / Accumulator Cart State
@@ -14,6 +14,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
   // Independent Sales History State
   const [salesHistory, setSalesHistory] = useState([]);
+  const [staffList, setStaffList] = useState([]);
 
   // Editing Sale State
   const [editingSale, setEditingSale] = useState(null);
@@ -45,6 +46,12 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
   const [expandedMonths, setExpandedMonths] = useState({ [currentMonthKey]: true });
 
+  // --- ADMIN PIN SECURITY MODAL STATES ---
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [adminPinInput, setAdminPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pendingAction, setPendingAction] = useState(null);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -64,6 +71,15 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       .filter(p => p.name.toLowerCase().includes(lowercasedTerm) || (p.batch_reference && p.batch_reference.toLowerCase().includes(lowercasedTerm)))
       .slice(0, 50);
   }, [products, productSearchTerm]);
+
+  const fetchStaffList = async () => {
+    try {
+      const { data, error } = await supabase.from('staff').select('*');
+      if (!error && data) setStaffList(data);
+    } catch (err) {
+      console.error('Error fetching staff list:', err);
+    }
+  };
 
   const fetchSalesHistory = async () => {
     try {
@@ -93,12 +109,38 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   useEffect(() => {
     if (currentUser) {
       fetchSalesHistory();
+      fetchStaffList();
     }
   }, [currentUser, activeBranchId]);
 
   useEffect(() => {
     localStorage.setItem('akuDonCart', JSON.stringify(cartItems));
   }, [cartItems]);
+
+  // 🔒 Admin Validation Trigger
+  const requestAdminAuth = (actionCallback) => {
+    setAdminPinInput('');
+    setPinError('');
+    setPendingAction(() => actionCallback);
+    setIsPinModalOpen(true);
+  };
+
+  // 🔒 PIN Submission and Verification inside Modal
+  const handleVerifyAdminPin = (e) => {
+    e.preventDefault();
+    const verifyingAdmin = staffList.find(s => s.pin_code === adminPinInput.trim() && s.role === 'admin' && s.is_active);
+
+    if (!verifyingAdmin) {
+      setPinError("❌ Incorrect or unauthorized administrator PIN code.");
+      return;
+    }
+
+    setIsPinModalOpen(false);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  };
 
   const toggleMonth = (monthKey) => {
     setExpandedMonths(prev => ({ ...prev, [monthKey]: !prev[monthKey] }));
@@ -119,7 +161,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     const qty = parseInt(cartQty) || 1;
     const priceToUse = parseFloat(customPrice) >= 0 ? parseFloat(customPrice) : prod.price;
 
-    if (qty > prod.quantity) {
+    if (qty > prod.quantity && !editingSale) {
       alert(`Selected quantity exceeds available stock (${prod.quantity}).`);
       return;
     }
@@ -172,11 +214,12 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   const revertSaleStockAndDebt = async (sale) => {
     if (sale.items && Array.isArray(sale.items)) {
       for (const item of sale.items) {
-        if (item.productId) {
+        if (item.productId || item.product_id) {
+          const prodId = item.productId || item.product_id;
           const { data: prodData, error: fetchErr } = await supabase
             .from('products')
             .select('quantity')
-            .eq('id', item.productId)
+            .eq('id', prodId)
             .maybeSingle();
 
           if (!fetchErr && prodData) {
@@ -184,7 +227,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
             await supabase
               .from('products')
               .update({ quantity: restoredQty, stock_status: restoredQty > 0 })
-              .eq('id', item.productId);
+              .eq('id', prodId);
           }
         }
       }
@@ -210,36 +253,34 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     }
   };
 
-  // --- ACCURATE STOCK DEDUCTION LOGIC ---
   const deductStockForCart = async (items) => {
     for (const item of items) {
-      if (item.productId) {
-        // Fetch current live product quantity directly from database
+      const prodId = item.productId || item.product_id;
+      if (prodId) {
         const { data: freshProd, error: fetchErr } = await supabase
           .from('products')
           .select('quantity')
-          .eq('id', item.productId)
+          .eq('id', prodId)
           .maybeSingle();
 
         if (fetchErr || !freshProd) {
-          console.error(`Error fetching stock for product ${item.productId}:`, fetchErr);
+          console.error(`Error fetching stock for product ${prodId}:`, fetchErr);
           continue;
         }
 
         const currentStock = freshProd.quantity || 0;
         const newStock = Math.max(0, currentStock - item.qty);
 
-        // Update database with reduced quantity
         const { error: updateErr } = await supabase
           .from('products')
           .update({ 
             quantity: newStock, 
             stock_status: newStock > 0 
           })
-          .eq('id', item.productId);
+          .eq('id', prodId);
 
         if (updateErr) {
-          console.error(`Error deducting stock for product ${item.productId}:`, updateErr);
+          console.error(`Error deducting stock for product ${prodId}:`, updateErr);
         }
       }
     }
@@ -304,7 +345,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         staff_name: staffName,
         goods: goodsDescription,
         batch: cartItems.length === 1 ? cartItems[0].batch : 'MULTI-BATCH',
-        product_id: cartItems.length === 1 ? cartItems[0].productId : null,
+        product_id: cartItems.length === 1 ? (cartItems[0].productId || cartItems[0].product_id) : null,
         qty: cartItems.reduce((sum, item) => sum + item.qty, 0),
         total: cartTotal,
         paid: paidAmount,
@@ -324,7 +365,6 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         await supabase.from('customer_history').insert([salePayload]);
       }
 
-      // Deduct stock in Supabase database
       await deductStockForCart(cartItems);
 
       setLedgerForm({ customerId: 'walkin', newName: '', newPhone: '', initialPaid: '' });
@@ -332,7 +372,6 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       setEditingSale(null);
       localStorage.removeItem('akuDonCart');
       
-      // Immediately refresh products state so new reduced stock displays instantly
       if (fetchProducts) await fetchProducts();
       if (fetchCustomers) await fetchCustomers();
       await fetchSalesHistory();
@@ -343,36 +382,39 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     }
   };
 
-  const handleDeleteSale = async (sale) => {
-    const confirmDelete = window.confirm(`⚠️ WARNING: Do you really want to DELETE the sale for ${sale.goods}?\n\n- Items will be restocked.`);
-    if (!confirmDelete) return;
-
-    try {
-      await revertSaleStockAndDebt(sale);
-      await supabase.from('customer_history').delete().eq('id', sale.id);
-      alert("Sale deleted successfully!");
-      if (fetchProducts) await fetchProducts();
-      if (fetchCustomers) await fetchCustomers();
-      await fetchSalesHistory();
-    } catch (err) {
-      alert(`Error: ${err.message}`);
-    }
+  // 🔒 Protected Delete with Admin PIN
+  const handleDeleteSale = (sale) => {
+    requestAdminAuth(async () => {
+      try {
+        await revertSaleStockAndDebt(sale);
+        await supabase.from('customer_history').delete().eq('id', sale.id);
+        alert("Sale deleted successfully and stock restored!");
+        if (fetchProducts) await fetchProducts();
+        if (fetchCustomers) await fetchCustomers();
+        await fetchSalesHistory();
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    });
   };
 
+  // 🔒 Protected Edit with Admin PIN
   const handleEditSale = (sale) => {
     if (!sale.items || sale.items.length === 0) {
       alert("Cannot edit: item details are not available for this legacy transaction.");
       return;
     }
-    setEditingSale(sale);
-    setCartItems(sale.items);
-    setLedgerForm({
-      customerId: sale.customer_id ? String(sale.customer_id) : 'walkin',
-      newName: '',
-      newPhone: '',
-      initialPaid: sale.paid?.toString() || ''
+    requestAdminAuth(() => {
+      setEditingSale(sale);
+      setCartItems(sale.items);
+      setLedgerForm({
+        customerId: sale.customer_id ? String(sale.customer_id) : 'walkin',
+        newName: '',
+        newPhone: '',
+        initialPaid: sale.paid?.toString() || ''
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancelEdit = () => {
@@ -415,6 +457,40 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       );
     });
   }, [salesHistory, customers, searchTerm]);
+
+  // --- TODAY'S STATS & MONTHLY ARCHIVES LOGIC ---
+  const { todayStats, monthlyArchives } = useMemo(() => {
+    const now = new Date();
+    const shiftStart = new Date(now);
+    if (now.getHours() < 6) shiftStart.setDate(shiftStart.getDate() - 1); 
+    shiftStart.setHours(6, 0, 0, 0);
+
+    const todayData = {};
+    const archives = {};
+
+    salesHistory.forEach(sale => {
+      const saleDate = new Date(sale.created_at || sale.date);
+      const staffName = sale.staff_name || 'Staff';
+      const total = sale.total || 0;
+
+      // Today's Sales since 06:00 AM check
+      if (saleDate >= shiftStart) {
+        if (!todayData[staffName]) todayData[staffName] = { count: 0, total: 0 };
+        todayData[staffName].count += 1;
+        todayData[staffName].total += total;
+      }
+
+      // Monthly Archives Logic
+      const { key: monthKey, label: monthLabel } = getMonthGroup(sale);
+      if (!archives[monthKey]) archives[monthKey] = { label: monthLabel, staffData: {} };
+      if (!archives[monthKey].staffData[staffName]) archives[monthKey].staffData[staffName] = { count: 0, total: 0 };
+      
+      archives[monthKey].staffData[staffName].count += 1;
+      archives[monthKey].staffData[staffName].total += total;
+    });
+
+    return { todayStats: todayData, monthlyArchives: archives };
+  }, [salesHistory]);
 
   const groupedSalesByMonth = useMemo(() => {
     const groups = {};
@@ -626,11 +702,31 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
       {/* RIGHT COLUMN: MONTHLY FOLDERS & SALES SEARCH */}
       <div className="lg:col-span-2 space-y-4">
+        
+        {/* TODAY'S SALES & MONTHLY ARCHIVES PREVIEW SUMMARY */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+          <h3 className="font-bold text-xs uppercase text-gray-700 pb-2 border-b flex items-center">
+            <Clock className="w-4 h-4 mr-2 text-orange-500" /> 
+            Today's Sales (Since 06:00 AM)
+          </h3>
           
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.keys(todayStats).length > 0 ? Object.entries(todayStats).map(([name, data]) => (
+              <div key={name} className="p-3 border rounded-xl bg-orange-50/50 border-orange-100 text-center">
+                <p className="text-[10px] text-gray-500 font-bold uppercase">{name}</p>
+                <p className="text-base font-black text-gray-800">#{data.total.toLocaleString()}</p>
+                <p className="text-[10px] text-gray-400">{data.count} transaction(s)</p>
+              </div>
+            )) : (
+              <p className="text-xs text-gray-400 italic col-span-full bg-gray-50 p-3 rounded-lg border border-dashed">No sales recorded since 6:00 AM today.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b">
-            <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700">
-              Sales History {currentUser?.role !== 'admin' ? '(Your Sales)' : 'Global'}
+            <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-orange-600" /> Sales History & Monthly Archives (PIN Required for Edits/Deletes)
             </h3>
 
             <div className="relative w-full md:w-72">
@@ -722,8 +818,8 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                                 
                                 {currentUser?.role === 'admin' && (
                                   <div className="flex items-center space-x-1 pl-2 border-l border-gray-300">
-                                    <button type="button" onClick={() => handleEditSale(sale)} className="p-1.5 text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors" title="Edit sale"><Pencil className="w-3 h-3" /></button>
-                                    <button type="button" onClick={() => handleDeleteSale(sale)} className="p-1.5 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors" title="Delete sale (restores stock)"><Trash2 className="w-3 h-3" /></button>
+                                    <button type="button" onClick={() => handleEditSale(sale)} className="p-1.5 text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors" title="Edit sale (Admin PIN required)"><Pencil className="w-3 h-3" /></button>
+                                    <button type="button" onClick={() => handleDeleteSale(sale)} className="p-1.5 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors" title="Delete sale (Admin PIN required)"><Trash2 className="w-3 h-3" /></button>
                                   </div>
                                 )}
                               </div>
@@ -743,6 +839,56 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
           </div>
         </div>
       </div>
+
+      {/* 🔒 ADMIN PIN SECURITY MODAL */}
+      {isPinModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
+                <Key className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-xs uppercase text-gray-800">Administrator Security</h3>
+                <p className="text-[11px] text-gray-500">Admin PIN required to edit/delete sale</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyAdminPin} className="space-y-4">
+              <div>
+                <input
+                  type="password"
+                  autoFocus
+                  placeholder="••••"
+                  value={adminPinInput}
+                  onChange={(e) => setAdminPinInput(e.target.value)}
+                  className="w-full border p-3 text-center text-lg tracking-[0.3em] font-mono rounded-lg outline-none focus:ring-2 focus:ring-slate-800 bg-gray-50 focus:bg-white transition-all"
+                />
+                {pinError && (
+                  <p className="text-red-500 text-[11px] mt-2 font-medium text-center">{pinError}</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsPinModalOpen(false)}
+                  className="w-1/2 py-2.5 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-bold rounded-lg uppercase transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 bg-[#0f172a] text-white hover:bg-slate-800 text-xs font-bold rounded-lg uppercase transition-colors shadow-sm"
+                >
+                  Validate
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
