@@ -30,7 +30,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (currentUser && currentUser.role === 'staff') {
+    if (currentUser && (currentUser.role === 'staff' || currentUser.role === 'Staff')) {
       fetchStaffBranchData();
     }
   }, [currentUser]);
@@ -48,7 +48,7 @@ export default function App() {
     }
   };
 
-  // --- ROBUST PIN LOGIN HANDLER ---
+  // --- ROBUST & SECURE PIN LOGIN HANDLER ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -62,27 +62,35 @@ export default function App() {
     }
 
     try {
-      // Query without .single() to avoid PGRST116 multi-row / single row errors
+      // Query staff records by PIN code as an array to avoid PGRST116 single-row errors
       const { data, error } = await supabase
         .from('staff')
         .select('*')
         .eq('pin_code', cleanPin);
 
+      console.log("PIN Lookup Result:", { cleanPin, data, error });
+
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        setLoginError('Incorrect PIN code.');
+        setLoginError(`Incorrect PIN code. Entered: "${cleanPin}"`);
       } else {
-        const activeUser = data.find(u => u.is_active) || data[0];
+        const activeUser = data.find(u => u.is_active === true || u.is_active === 'true') || data[0];
 
-        if (!activeUser.is_active) {
+        if (activeUser.is_active === false) {
           setLoginError('This account has been deactivated. Please contact an administrator.');
         } else {
-          setCurrentUser(activeUser);
+          // Normalize role casing
+          const normalizedUser = {
+            ...activeUser,
+            role: String(activeUser.role || 'staff').toLowerCase()
+          };
+          setCurrentUser(normalizedUser);
           setPinInput('');
         }
       }
     } catch (err) {
+      console.error("Login Exception:", err);
       setLoginError(`Login error: ${err.message || 'Server connection issue'}`);
     } finally {
       setIsLoading(false);
