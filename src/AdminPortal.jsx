@@ -10,20 +10,14 @@ import {
   ShieldCheck, 
   Globe, 
   ShieldAlert, 
-  Sparkles,
   LogOut,
   FolderPlus,
-  Package,
   Layers,
   Edit3,
   Trash2,
-  DollarSign,
-  ImageIcon,
-  X,
-  Lock,
-  Unlock,
-  RotateCcw,
-  Archive
+  Archive,
+  UserPlus,
+  LogIn
 } from 'lucide-react';
 import SalesLedger from './SalesLedger';
 import InventoryManagement from './components/InventoryManagement';
@@ -32,12 +26,15 @@ import BatchTransferModal from './components/BatchTransferModal';
 import TransferHistoryModal from './components/TransferHistoryModal';
 import StaffManagement from './StaffManagement';
 
-export default function AdminApp({ currentUser, supabase, setView }) {
-  // --- AUTHENTICATION & SESSION STATES (From Website 1) ---
+export default function AdminPortal({ currentUser, supabase, setView }) {
+  // --- AUTHENTICATION & SESSION STATES ---
   const [session, setSession] = useState(null);
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
+  const [adminFullName, setAdminFullName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
   // --- NAVIGATION TAB STATE ---
@@ -51,7 +48,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
   const [branches, setBranches] = useState([]);
   const [transferLogs, setTransferLogs] = useState([]);
 
-  // --- CATEGORY STATES (From Website 1) ---
+  // --- CATEGORY STATES ---
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoryCreating, setCategoryCreating] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -59,7 +56,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
   const [categoryActionLoading, setCategoryActionLoading] = useState(false);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
 
-  // --- PRIVACY / FINANCIAL VISIBILITY STATES ---
+  // --- FINANCIAL VISIBILITY STATES ---
   const [showFinancials, setShowFinancials] = useState(false);
   const autoHideTimerRef = useRef(null);
 
@@ -160,29 +157,63 @@ export default function AdminApp({ currentUser, supabase, setView }) {
     fetchStoreSettings();
   };
 
-  // --- AUTHENTICATION HANDLERS (Supabase Real-Time Auth) ---
-  const handleAdminLogin = async (e) => {
+  // --- AUTHENTICATION HANDLERS (SUPABASE SIGN IN & SIGN UP FIX) ---
+  const handleAdminAuth = async (e) => {
     e.preventDefault();
     setAuthError('');
+    setAuthSuccess('');
     setAuthLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: adminEmail,
-        password: adminPassword,
-      });
+      if (isSignUpMode) {
+        // Sign Up New Admin Account with Metadata Payload
+        const { data, error } = await supabase.auth.signUp({
+          email: adminEmail.trim(),
+          password: adminPassword,
+          options: {
+            data: {
+              full_name: adminFullName.trim() || 'Admin User',
+              role: 'admin'
+            }
+          }
+        });
 
-      if (error) {
-        setAuthError(error.message);
+        if (error) {
+          setAuthError(error.message);
+        } else if (data?.user) {
+          // Sync with staff table if staff management requires staff record
+          await supabase.from('staff').upsert({
+            full_name: adminFullName.trim() || 'Admin User',
+            pin_code: '1234',
+            role: 'admin',
+            is_active: true
+          }, { onConflict: 'full_name' }).catch(() => {});
+
+          setAuthSuccess('Admin account created successfully! Signing in...');
+          setTimeout(() => {
+            setSession(data.session);
+            fetchAllAppData();
+          }, 1000);
+        }
       } else {
-        setAdminEmail('');
-        setAdminPassword('');
-        setSession(data.session);
-        fetchAllAppData();
+        // Standard Sign In
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: adminEmail.trim(),
+          password: adminPassword,
+        });
+
+        if (error) {
+          setAuthError(error.message);
+        } else {
+          setAdminEmail('');
+          setAdminPassword('');
+          setSession(data.session);
+          fetchAllAppData();
+        }
       }
     } catch (err) {
       setAuthError('An unexpected authentication error occurred.');
-    } finally {
+    } fontally {
       setAuthLoading(false);
     }
   };
@@ -199,7 +230,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { data, error } = await supabase.from('categories').select('*').order('name', { ascending: true });
       if (!error && data) setCategories(data);
     } catch (err) {
-      console.error("Erreur chargement catégories:", err);
+      console.error("Error loading categories:", err);
     }
   };
 
@@ -208,7 +239,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { data, error } = await supabase.from('branches').select('*').order('created_at', { ascending: true });
       if (!error && data) setBranches(data);
     } catch (err) { 
-      console.error("Erreur branches:", err); 
+      console.error("Error loading branches:", err); 
     }
   };
 
@@ -217,7 +248,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
       if (!error && data) setProducts(data);
     } catch (err) { 
-      console.error("Erreur produits:", err); 
+      console.error("Error loading products:", err); 
     }
   };
 
@@ -303,7 +334,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
 
       setCustomers(formatted);
     } catch (err) { 
-      console.error("Erreur clients:", err.message); 
+      console.error("Error loading customers:", err.message); 
     }
   };
 
@@ -312,7 +343,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { data, error } = await supabase.from('staff').select('*').order('created_at', { ascending: false });
       if (!error && data) setStaffList(data);
     } catch (err) { 
-      console.error("Erreur personnel:", err); 
+      console.error("Error loading staff:", err); 
     }
   };
 
@@ -321,7 +352,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { data, error } = await supabase.from('stock_transfers').select('*').order('created_at', { ascending: false });
       if (!error && data) setTransferLogs(data);
     } catch (err) {
-      console.log("Journal des transferts non encore disponible.");
+      console.log("Transfer logs not available.");
     }
   };
 
@@ -330,11 +361,11 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { data } = await supabase.from('store_settings').select('active_branch').single();
       if (data) setLiveStoreBranch(data.active_branch || '');
     } catch (err) {
-      console.log("Store settings defaultHQ.");
+      console.log("Store settings using default HQ.");
     }
   };
 
-  // --- CATEGORY HANDLERS (From Website 1) ---
+  // --- CATEGORY HANDLERS ---
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
@@ -345,9 +376,9 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       if (error) throw error;
       setNewCategoryName('');
       await fetchCategoriesFromSupabase();
-      alert('Catégorie créée avec succès !');
+      alert('Category created successfully!');
     } catch (err) {
-      alert(`Erreur Catégorie: ${err.message}`);
+      alert(`Category Error: ${err.message}`);
     } finally {
       setCategoryCreating(false);
     }
@@ -374,21 +405,21 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       cancelEditCategory();
       await fetchCategoriesFromSupabase();
     } catch (err) {
-      alert(`Erreur mise à jour catégorie: ${err.message}`);
+      alert(`Error updating category: ${err.message}`);
     } finally {
       setCategoryActionLoading(false);
     }
   };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer cette catégorie ?')) return;
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
     setCategoryActionLoading(true);
     try {
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (error) throw error;
       await fetchCategoriesFromSupabase();
     } catch (err) {
-      alert(`Erreur suppression catégorie: ${err.message}`);
+      alert(`Error deleting category: ${err.message}`);
     } finally {
       setCategoryActionLoading(false);
     }
@@ -408,7 +439,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
 
   const formatMoney = (amount) => {
     if (!showFinancials) return '••••••••';
-    return `${(amount || 0).toLocaleString()} FCFA`;
+    return `#${(amount || 0).toLocaleString()}`;
   };
 
   // --- BRANCH & STOREFRONT HANDLERS ---
@@ -417,9 +448,9 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { error } = await supabase.from('store_settings').upsert({ id: 1, active_branch: newBranchId }, { onConflict: 'id' });
       if (error) throw error;
       setLiveStoreBranch(newBranchId);
-      alert("Succursale en ligne mise à jour avec succès !");
+      alert("Public storefront branch updated successfully!");
     } catch (err) {
-      alert(`Erreur: ${err.message}`);
+      alert(`Error: ${err.message}`);
     }
   };
 
@@ -430,24 +461,24 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const payload = { name: branchName.trim(), location: branchLocation.trim() };
       if (editingBranch) {
         await supabase.from('branches').update(payload).eq('id', editingBranch.id);
-        alert('Succursale mise à jour !');
+        alert('Branch updated!');
       } else {
         await supabase.from('branches').insert([payload]);
-        alert('Nouvelle succursale créée !');
+        alert('New branch created!');
       }
       setBranchName(''); setBranchLocation(''); setEditingBranch(null);
       fetchBranchesFromSupabase();
-    } catch (err) { alert(`Erreur: ${err.message}`); }
+    } catch (err) { alert(`Error: ${err.message}`); }
   };
 
   const handleDeleteBranch = async (branchId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette succursale ?')) return;
+    if (!window.confirm('Are you sure you want to delete this branch?')) return;
     try {
       const { error } = await supabase.from('branches').delete().eq('id', branchId);
       if (error) throw error;
       if (viewingBranch === branchId) setViewingBranch('');
       fetchBranchesFromSupabase();
-    } catch (err) { alert(`Erreur: ${err.message}`); }
+    } catch (err) { alert(`Error: ${err.message}`); }
   };
 
   const handleReassignStaff = async (staffId, newBranchId) => {
@@ -455,7 +486,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       const { error } = await supabase.from('staff').update({ branch_id: newBranchId || null }).eq('id', staffId);
       if (error) throw error;
       fetchStaffFromSupabase();
-    } catch (err) { alert(`Erreur: ${err.message}`); }
+    } catch (err) { alert(`Error: ${err.message}`); }
   };
 
   const handleSaveStaff = async (e) => {
@@ -476,14 +507,14 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       }
       setStaffName(''); setStaffPin(''); setStaffRole('staff'); setStaffBranch(''); setEditingStaff(null);
       fetchStaffFromSupabase();
-    } catch (err) { alert(`Erreur: ${err.message}`); }
+    } catch (err) { alert(`Error: ${err.message}`); }
   };
 
   const handleToggleStaffStatus = async (id, currentStatus) => {
     try {
       await supabase.from('staff').update({ is_active: !currentStatus }).eq('id', id);
       fetchStaffFromSupabase();
-    } catch (err) { alert(`Erreur: ${err.message}`); }
+    } catch (err) { alert(`Error: ${err.message}`); }
   };
 
   const handleStartEditStaff = (staffMember) => {
@@ -497,7 +528,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
 
   // --- IMAGE COMPRESSION & PRODUCT MANAGEMENT ---
   const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => { 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const reader = new FileReader(); reader.readAsDataURL(file);
       reader.onload = (event) => {
         const img = new Image(); img.src = event.target.result;
@@ -558,9 +589,9 @@ export default function AdminApp({ currentUser, supabase, setView }) {
 
       handleCancelEditProduct();
       await fetchProducts();
-      alert('Produit enregistré avec succès !');
+      alert('Product saved successfully!');
     } catch (err) { 
-      alert(`Erreur: ${err.message}`); 
+      alert(`Error: ${err.message}`); 
     } finally { 
       setUploading(false); 
     }
@@ -591,7 +622,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
   };
 
   const handleArchiveProduct = async (id, archiveState = true) => {
-    if (!window.confirm(archiveState ? 'Archiver ce produit ?' : 'Restaurer ce produit ?')) return;
+    if (!window.confirm(archiveState ? 'Archive this product?' : 'Restore this product?')) return;
     await supabase.from('products').update({ is_archived: archiveState }).eq('id', id);
     setProducts(prev => prev.map(p => String(p.id) === String(id) ? { ...p, is_archived: archiveState } : p));
   };
@@ -631,7 +662,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
   const handleProceedToBatchReview = () => {
     const activeItems = Object.values(selectedBatchItems).filter(item => item.selected);
     if (activeItems.length === 0) {
-      setBatchTransferError("Veuillez sélectionner au moins un produit.");
+      setBatchTransferError("Please select at least one product.");
       return;
     }
     setBatchTransferError('');
@@ -679,7 +710,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
           batch_reference: product.batch_reference || 'N/A',
           qty: transferQty,
           target_branch_id: targetBranch,
-          target_branch_name: targetBranchObj?.name || 'Succursale'
+          target_branch_name: targetBranchObj?.name || 'Branch'
         });
       }
 
@@ -695,9 +726,9 @@ export default function AdminApp({ currentUser, supabase, setView }) {
       setBatchTransferOpen(false);
       await fetchProducts();
       await fetchTransferLogs();
-      alert(`Transfert effectué avec succès ! Réf: ${transferRef}`);
+      alert(`Transfer completed successfully! Ref: ${transferRef}`);
     } catch (err) {
-      setBatchTransferError(`Erreur: ${err.message}`);
+      setBatchTransferError(`Error: ${err.message}`);
       setBatchTransferLoading(false);
     }
   };
@@ -770,19 +801,41 @@ export default function AdminApp({ currentUser, supabase, setView }) {
   const hqProductsForTransfer = products.filter(p => (!p.branch_id || p.branch_id === '') && !p.is_archived && parseInt(p.quantity) > 0);
   const activeSelectedArray = Object.values(selectedBatchItems).filter(i => i.selected);
 
-  // --- UNAUTHENTICATED LOGIN SCREEN (Supabase Auth from Website 1) ---
+  // --- LOGIN / SIGN UP SCREEN FOR ADMIN AUTHENTICATION ---
   if (!session) {
     return (
       <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <div className="text-center mb-5">
-            <h2 className="text-lg font-bold text-gray-900">Admin Portal Login</h2>
-            <p className="text-xs text-gray-500 mt-1">Authenticate using your Supabase credentials.</p>
-            {authError && <p className="text-red-500 text-xs mt-2 font-medium bg-red-50 p-2 rounded-lg">{authError}</p>}
+        <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 shadow-md">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
+              {isSignUpMode ? 'Create Admin Account' : 'Admin Portal Login'}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              {isSignUpMode 
+                ? 'Register a new administrative account for Chike Global.' 
+                : 'Authenticate using your registered administrator credentials.'}
+            </p>
+            {authError && <p className="text-red-600 text-xs mt-3 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-200">{authError}</p>}
+            {authSuccess && <p className="text-emerald-600 text-xs mt-3 font-semibold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">{authSuccess}</p>}
           </div>
-          <form onSubmit={handleAdminLogin} className="space-y-4">
+
+          <form onSubmit={handleAdminAuth} className="space-y-4">
+            {isSignUpMode && (
+              <div>
+                <label className="text-[10px] font-extrabold uppercase text-gray-500 block mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Engr Chike" 
+                  value={adminFullName} 
+                  onChange={e => setAdminFullName(e.target.value)} 
+                  className="w-full border p-2.5 rounded-xl text-xs bg-white text-black focus:outline-none focus:border-[#f68b1e]" 
+                  required 
+                />
+              </div>
+            )}
+
             <div>
-              <label className="text-[10px] font-bold uppercase text-gray-500 block mb-1">Email Address</label>
+              <label className="text-[10px] font-extrabold uppercase text-gray-500 block mb-1">Email Address</label>
               <input 
                 type="email" 
                 placeholder="admin@chikeglobal.com" 
@@ -792,8 +845,9 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                 required 
               />
             </div>
+
             <div>
-              <label className="text-[10px] font-bold uppercase text-gray-500 block mb-1">Password</label>
+              <label className="text-[10px] font-extrabold uppercase text-gray-500 block mb-1">Password</label>
               <input 
                 type="password" 
                 placeholder="••••••••" 
@@ -803,14 +857,31 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                 required 
               />
             </div>
+
             <button 
               type="submit" 
               disabled={authLoading}
-              className="w-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+              className="w-full bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold py-3 rounded-xl uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center space-x-2 shadow-sm"
             >
-              {authLoading ? 'Authenticating...' : 'Sign In'}
+              {isSignUpMode ? <UserPlus className="w-4 h-4 text-amber-400" /> : <LogIn className="w-4 h-4 text-amber-400" />}
+              <span>{authLoading ? 'Processing...' : isSignUpMode ? 'Register Account' : 'Sign In'}</span>
             </button>
           </form>
+
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <button
+              onClick={() => {
+                setIsSignUpMode(!isSignUpMode);
+                setAuthError('');
+                setAuthSuccess('');
+              }}
+              className="text-xs text-[#f68b1e] font-bold hover:underline cursor-pointer"
+            >
+              {isSignUpMode 
+                ? 'Already have an admin account? Sign In' 
+                : 'Need to create an admin account? Register'}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -888,7 +959,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                 }`}
               >
                 <ShieldAlert className="w-4 h-4" />
-                <span>Critique: {lowStockProducts.length}</span>
+                <span>Critical: {lowStockProducts.length}</span>
               </button>
 
               {/* BRANCH FILTER DROPDOWN */}
@@ -911,7 +982,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                 className="px-3 py-2 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center space-x-1.5 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Déconnexion</span>
+                <span>Logout</span>
               </button>
             </div>
           </div>
@@ -921,14 +992,14 @@ export default function AdminApp({ currentUser, supabase, setView }) {
         <div className="space-y-3">
           <div className="flex justify-between items-center px-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-slate-400" /> Performance Financière
+              <ShieldCheck className="w-4 h-4 text-slate-400" /> Financial Performance Metrics
             </span>
             <button
               onClick={handleToggleFinancialVisibility}
               className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold rounded-xl bg-white text-slate-700 border border-slate-200 shadow-sm cursor-pointer"
             >
               {showFinancials ? <EyeOff className="w-4 h-4 text-rose-500" /> : <Eye className="w-4 h-4 text-emerald-600" />}
-              <span>{showFinancials ? 'Masquer les chiffres' : 'Afficher les chiffres'}</span>
+              <span>{showFinancials ? 'Hide Figures' : 'Show Figures'}</span>
             </button>
           </div>
 
@@ -967,7 +1038,7 @@ export default function AdminApp({ currentUser, supabase, setView }) {
             {/* LEFT COLUMN: CATEGORIES & PRODUCT ENTRY */}
             <div className="space-y-6">
               
-              {/* CATEGORY MANAGEMENT CARD (From Website 1) */}
+              {/* CATEGORY MANAGEMENT CARD */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center space-x-2 pb-2 border-b mb-4">
                   <FolderPlus className="w-4 h-4 text-[#f68b1e]" />
@@ -1028,44 +1099,44 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                 </div>
               </div>
 
-              {/* PRODUCT ADD / EDIT FORM (Integrated Category + Branch + Batch) */}
+              {/* PRODUCT ADD / EDIT FORM */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex justify-between items-center pb-2 border-b mb-4">
                   <h3 className="font-bold text-xs uppercase tracking-wide text-slate-700">
-                    {editingProduct ? 'Modifier le Produit' : 'Ajouter un Produit'}
+                    {editingProduct ? 'Edit Product' : 'Add New Product'}
                   </h3>
                   {editingProduct && (
-                    <button onClick={handleCancelEditProduct} className="text-xs text-red-500 font-bold">Annuler</button>
+                    <button onClick={handleCancelEditProduct} className="text-xs text-red-500 font-bold">Cancel</button>
                   )}
                 </div>
 
                 <form onSubmit={handleSaveProduct} className="space-y-3.5">
-                  <input type="text" placeholder="Nom du produit" value={name} onChange={e => setName(e.target.value)} className="w-full border p-2 text-xs rounded-lg" required />
-                  <input type="text" placeholder="Batch Ref (ex: BATCH-A)" value={batch} onChange={e => setBatch(e.target.value)} className="w-full border p-2 text-xs rounded-lg uppercase" required />
+                  <input type="text" placeholder="Product Name" value={name} onChange={e => setName(e.target.value)} className="w-full border p-2 text-xs rounded-lg" required />
+                  <input type="text" placeholder="Batch Ref (e.g. BATCH-A)" value={batch} onChange={e => setBatch(e.target.value)} className="w-full border p-2 text-xs rounded-lg uppercase" required />
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Prix Achat</label>
+                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Cost Price (#)</label>
                       <input type="number" placeholder="Cost" value={costPrice} onChange={e => setCostPrice(e.target.value)} className="w-full border p-2 text-xs rounded-lg" required />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Prix Vente</label>
+                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Retail Price (#)</label>
                       <input type="number" placeholder="Retail" value={price} onChange={e => setPrice(e.target.value)} className="w-full border p-2 text-xs rounded-lg" required />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Catégorie</label>
+                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Category</label>
                       <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full border p-2 text-xs rounded-lg bg-white">
-                        <option value="">-- Sans Catégorie --</option>
+                        <option value="">-- No Category --</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Succursale</label>
+                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Branch Location</label>
                       <select value={productBranch} onChange={e => setProductBranch(e.target.value)} className="w-full border p-2 text-xs rounded-lg bg-white">
-                        <option value="">HQ Stock Principal</option>
+                        <option value="">HQ Main Stock</option>
                         {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </div>
@@ -1073,20 +1144,20 @@ export default function AdminApp({ currentUser, supabase, setView }) {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Qté Initiale</label>
+                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Initial Qty</label>
                       <input type="number" placeholder="Initial" value={initialQuantity} onChange={e => setInitialQuantity(e.target.value)} className="w-full border p-2 text-xs rounded-lg" />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Stock Actuel</label>
+                      <label className="text-[10px] text-slate-400 font-bold block mb-1">Current Stock</label>
                       <input type="number" placeholder="Stock" value={quantity} onChange={e => setQuantity(e.target.value)} className="w-full border p-2 text-xs rounded-lg" required />
                     </div>
                   </div>
 
-                  <textarea placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} className="w-full border p-2 text-xs rounded-lg h-16" />
+                  <textarea placeholder="Product Description" value={description} onChange={e => setDescription(e.target.value)} className="w-full border p-2 text-xs rounded-lg h-16" />
                   <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} className="w-full text-xs text-slate-500" />
 
                   <button type="submit" disabled={uploading} className="w-full bg-[#f68b1e] text-white text-xs py-2.5 rounded-lg font-bold uppercase tracking-wider cursor-pointer">
-                    {uploading ? 'Traitement...' : editingProduct ? 'Enregistrer les modifications' : 'Publier le Produit'}
+                    {uploading ? 'Processing...' : editingProduct ? 'Save Changes' : 'Publish Product'}
                   </button>
                 </form>
               </div>
@@ -1097,18 +1168,18 @@ export default function AdminApp({ currentUser, supabase, setView }) {
             <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b gap-3">
                 <h3 className="font-bold text-xs uppercase tracking-wide text-slate-700 flex items-center">
-                  <Layers className="w-4 h-4 mr-1.5 text-orange-600" /> Catalogue des Produits
+                  <Layers className="w-4 h-4 mr-1.5 text-orange-600" /> Product Inventory Catalog
                 </h3>
                 
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={handleOpenBatchTransfer} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">
-                    Transférer Stock
+                    Transfer Stock
                   </button>
                   <button onClick={handleOpenTransferHistory} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold">
-                    Historique Transferts
+                    Transfer History
                   </button>
                   <select value={selectedCategoryFilter} onChange={e => setSelectedCategoryFilter(e.target.value)} className="border p-1.5 text-xs rounded-lg bg-slate-50 font-bold">
-                    <option value="ALL">Toutes Catégories</option>
+                    <option value="ALL">All Categories</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   <select value={selectedBatchFilter} onChange={e => setSelectedBatchFilter(e.target.value)} className="border p-1.5 text-xs rounded-lg bg-slate-50 font-bold">
@@ -1122,11 +1193,11 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                   <thead>
                     <tr className="bg-slate-50 text-slate-400 font-bold border-b">
                       <th className="p-2.5">Image</th>
-                      <th className="p-2.5">Article</th>
-                      <th className="p-2.5">Catégorie</th>
+                      <th className="p-2.5">Item</th>
+                      <th className="p-2.5">Category</th>
                       <th className="p-2.5">Batch / Branch</th>
-                      <th className="p-2.5">Achat</th>
-                      <th className="p-2.5">Vente</th>
+                      <th className="p-2.5">Cost</th>
+                      <th className="p-2.5">Retail</th>
                       <th className="p-2.5 text-center">Stock</th>
                       <th className="p-2.5 text-center">Actions</th>
                     </tr>
@@ -1145,8 +1216,8 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                             <span className="bg-orange-100 text-orange-800 font-bold px-1.5 py-0.5 rounded text-[10px] mr-1">{p.batch_reference || 'N/A'}</span>
                             <span className="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.5 rounded text-[10px]">{matchedBranch ? matchedBranch.name : 'HQ'}</span>
                           </td>
-                          <td className="p-2.5 text-slate-500">{p.cost_price?.toLocaleString()} FCFA</td>
-                          <td className="p-2.5 font-bold text-orange-600">{p.price?.toLocaleString()} FCFA</td>
+                          <td className="p-2.5 text-slate-500">#{p.cost_price?.toLocaleString()}</td>
+                          <td className="p-2.5 font-bold text-orange-600">#{p.price?.toLocaleString()}</td>
                           <td className="p-2.5 text-center"><input type="number" value={p.quantity !== null ? p.quantity : 0} onChange={(e) => handleUpdateStockVolume(p.id, e.target.value)} className="w-14 border text-center p-0.5 rounded font-bold" /></td>
                           <td className="p-2.5 text-center space-x-2">
                             <button onClick={() => handleStartEditProduct(p)} className="text-blue-500 hover:text-blue-700"><Edit3 className="w-4 h-4 inline" /></button>
@@ -1200,16 +1271,16 @@ export default function AdminApp({ currentUser, supabase, setView }) {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-black text-emerald-950 flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-emerald-600" /> Configuration de la Boutique Publique
+                    <Globe className="w-5 h-5 text-emerald-600" /> Public Storefront Configuration
                   </h3>
-                  <p className="text-xs text-slate-600 mt-1">Sélectionnez la succursale dont le stock sera visible en ligne.</p>
+                  <p className="text-xs text-slate-600 mt-1">Select which branch's stock will be displayed on the public customer catalog.</p>
                 </div>
                 <select 
                   value={liveStoreBranch}
                   onChange={(e) => handleUpdateLiveBranch(e.target.value)}
                   className="text-sm font-bold text-slate-900 border p-2 rounded-xl bg-white"
                 >
-                  <option value="">Siège Principal (HQ)</option>
+                  <option value="">Headquarters (HQ Main Stock)</option>
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
@@ -1217,14 +1288,14 @@ export default function AdminApp({ currentUser, supabase, setView }) {
 
             <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
-                <h3 className="text-base font-black text-slate-900">Aperçu du Catalogue de la Vitrine Publique</h3>
+                <h3 className="text-base font-black text-slate-900">Public Storefront Preview</h3>
                 <select 
                   value={storefrontBranch}
                   onChange={(e) => setStorefrontBranch(e.target.value)}
                   className="px-3.5 py-2 bg-slate-50 border rounded-xl text-xs font-semibold"
                 >
-                  <option value="">Aperçu : Siège Principal (HQ)</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>Aperçu : {b.name}</option>)}
+                  <option value="">Preview: Headquarters (HQ)</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>Preview: {b.name}</option>)}
                 </select>
               </div>
 
@@ -1234,10 +1305,10 @@ export default function AdminApp({ currentUser, supabase, setView }) {
                     <img src={product.image_url} alt={product.name} className="h-44 w-full object-cover" />
                     <div className="p-4 flex flex-col justify-between flex-1 space-y-2">
                       <h4 className="text-sm font-bold text-slate-900">{product.name}</h4>
-                      <p className="text-xs text-slate-500 line-clamp-2">{product.description || 'Aucune description.'}</p>
+                      <p className="text-xs text-slate-500 line-clamp-2">{product.description || 'No description available.'}</p>
                       <div className="flex justify-between items-center pt-2 border-t">
                         <span className="text-xs font-mono font-bold">{product.batch_reference || 'BATCH'}</span>
-                        <span className="text-sm font-black text-emerald-600">{product.price?.toLocaleString()} FCFA</span>
+                        <span className="text-sm font-black text-emerald-600">#{product.price?.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
