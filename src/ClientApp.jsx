@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './utils/supabaseClient';
-import { ShoppingCart, Smartphone, Star, Heart, Video, Search, X, Lock, MapPin, Menu, Sparkles, PackageOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Smartphone, Star, Heart, Video, Search, X, Lock, MapPin, Menu, Sparkles, PackageOpen, ChevronLeft, ChevronRight, PhoneCall } from 'lucide-react';
 
 export default function ClientApp() {
   const [products, setProducts] = useState([]);
@@ -215,20 +215,41 @@ export default function ClientApp() {
       </header>
 
       <main className="max-w-7xl w-full mx-auto p-4 md:py-8 space-y-6">
-        <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 border border-zinc-800 flex flex-col md:flex-row justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2 mb-2.5">
+        
+        {/* BANNER WITH ADDRESS & PHONE NUMBER */}
+        <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 border border-zinc-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
               <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> Branch: {storeBranch}
+                <MapPin className="w-3 h-3" /> Active Branch: {storeBranch}
               </span>
             </div>
-            <h1 className="text-xl md:text-3xl font-black tracking-tight">Z IKENNA GLOBAL COSMETICS</h1>
-            <p className="text-zinc-400 text-xs mt-1">Order your favorite items for the {storeBranch} branch instantly via WhatsApp.</p>
+
+            <h1 className="text-xl md:text-3xl font-black tracking-tight text-white">
+              Z IKENNA GLOBAL COSMETICS
+            </h1>
+
+            {/* HIGHLY VISIBLE & ALIGNED ADDRESS AND PHONE NUMBER */}
+            <div className="pt-1 space-y-1.5 border-t border-zinc-800/80 mt-2">
+              <p className="text-xs sm:text-sm font-semibold text-amber-400/90 flex items-center gap-2 tracking-wide">
+                <MapPin className="w-4 h-4 text-[#f68b1e] shrink-0" />
+                <span>Abia Plaza B56 Upstairs Trade Fair, Lagos, Nigeria</span>
+              </p>
+              <p className="text-xs sm:text-sm font-bold text-zinc-200 flex items-center gap-2 tracking-wider font-mono">
+                <PhoneCall className="w-4 h-4 text-[#f68b1e] shrink-0" />
+                <span>07060433000</span>
+              </p>
+            </div>
+
+            <p className="text-zinc-400 text-xs pt-1">
+              Order your favorite items for the {storeBranch} branch instantly via WhatsApp.
+            </p>
           </div>
-          <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
-            <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Fast Delivery</p>
-            <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1 mt-0.5">
-              <Smartphone className="w-3.5 h-3.5" /> <span>Order via WhatsApp</span>
+
+          <div className="bg-white/5 px-4 py-3 rounded-xl border border-white/10 shrink-0 self-stretch md:self-auto flex flex-col justify-center items-center">
+            <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold">Fast Dispatch</p>
+            <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1.5 mt-1">
+              <Smartphone className="w-4 h-4" /> <span>Order via WhatsApp</span>
             </p>
           </div>
         </div>
