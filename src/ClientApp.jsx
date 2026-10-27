@@ -17,7 +17,7 @@ export default function ClientApp() {
   const [isLoading, setIsLoading] = useState(true);
 
   // OFFICIAL LINKS & HANDLES
-  const WHATSAPP_NUMBER = '2250759322034';
+  const WHATSAPP_NUMBER = '+2347060433000';
   const FACEBOOK_URL = 'https://facebook.com/profile.php?id=61590626370497';
   const TIKTOK_URL = 'https://tiktok.com/@your-profile';
 
@@ -134,7 +134,7 @@ export default function ClientApp() {
 
   const handleWhatsAppCheckout = () => {
     if (cart.length === 0) return;
-    let msg = `✨ *CHIKE GLOBAL - NOUVELLE COMMANDE (${storeBranch})* ✨\n------------------------------------------\n\n`;
+    let msg = `✨ *Z IKENNA GLOBAL - NOUVELLE COMMANDE (${storeBranch})* ✨\n------------------------------------------\n\n`;
     cart.forEach((item, idx) => {
       msg += `🛍 *${idx + 1}. ${item.name}*\n  Prix: ${item.price.toLocaleString()} FCFA\n  Qté: ${item.quantity}\n------------------------------------------\n`;
     });
@@ -174,10 +174,10 @@ export default function ClientApp() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2.5 cursor-pointer shrink-0 group select-none" onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-900 shadow-md">
-              <span className="font-black text-amber-500 text-base">CG</span>
+              <span className="font-black text-amber-500 text-base">ZIG</span>
             </div>
             <div className="flex flex-col justify-center">
-              <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">CHIKE GLOBAL</span>
+              <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">Z IKENNA GLOBAL</span>
               <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5">COLLECTION</span>
             </div>
           </div>
@@ -208,7 +208,7 @@ export default function ClientApp() {
                 <MapPin className="w-3 h-3" /> Boutique: {storeBranch}
               </span>
             </div>
-            <h1 className="text-xl md:text-3xl font-black tracking-tight">CHIKE GLOBAL COLLECTION</h1>
+            <h1 className="text-xl md:text-3xl font-black tracking-tight">Z IKENNA GLOBAL COSMETICS</h1>
             <p className="text-zinc-400 text-xs mt-1">Commandez vos articles préférés pour la boutique de {storeBranch} instantanément via WhatsApp.</p>
           </div>
           <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
@@ -334,7 +334,7 @@ export default function ClientApp() {
                       <div className="p-3 flex-1 flex flex-col justify-between bg-white">
                         <div>
                           <div className="flex items-center space-x-1 mb-1">
-                            <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">CHIKE GLOBAL</span>
+                            <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">Z IKENNA GLOBAL</span>
                             <span className="text-blue-500 text-[10px] font-bold">✔</span>
                           </div>
                           <h3 className="text-xs text-gray-700 line-clamp-2 min-h-[2rem] leading-tight font-medium">
