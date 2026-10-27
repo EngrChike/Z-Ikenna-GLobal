@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './utils/supabaseClient';
-import { ShoppingCart, Smartphone, Star, Heart, Video, Search, X, Lock, MapPin, Menu, Sparkles, PackageOpen } from 'lucide-react';
+import { ShoppingCart, Smartphone, Star, Heart, Video, Search, X, Lock, MapPin, Menu, Sparkles, PackageOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ClientApp() {
   const [products, setProducts] = useState([]);
@@ -12,8 +12,12 @@ export default function ClientApp() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  
   // State for the globally active branch display name
-  const [storeBranch, setStoreBranch] = useState('Siège Principal');
+  const [storeBranch, setStoreBranch] = useState('Main Headquarters');
   const [isLoading, setIsLoading] = useState(true);
 
   // OFFICIAL LINKS & HANDLES
@@ -24,6 +28,11 @@ export default function ClientApp() {
   useEffect(() => {
     fetchActiveBranchAndProducts();
   }, []);
+
+  // Reset to page 1 whenever category or search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchTerm]);
 
   const fetchActiveBranchAndProducts = async () => {
     setIsLoading(true);
@@ -51,7 +60,7 @@ export default function ClientApp() {
       }
 
       // 4. Resolve active branch display name & query target
-      let activeBranchName = 'Siège Principal';
+      let activeBranchName = 'Main Headquarters';
       let selectedBranchId = null;
 
       if (branchesList.length > 0 && activeBranchId) {
@@ -89,7 +98,7 @@ export default function ClientApp() {
         console.error("Error fetching products:", error.message);
       }
     } catch (err) {
-      console.error("Erreur de récupération: ", err);
+      console.error("Fetch error: ", err);
     }
     
     setIsLoading(false);
@@ -134,16 +143,16 @@ export default function ClientApp() {
 
   const handleWhatsAppCheckout = () => {
     if (cart.length === 0) return;
-    let msg = `✨ *Z IKENNA GLOBAL - NOUVELLE COMMANDE (${storeBranch})* ✨\n------------------------------------------\n\n`;
+    let msg = `✨ *Z IKENNA GLOBAL - NEW ORDER (${storeBranch})* ✨\n------------------------------------------\n\n`;
     cart.forEach((item, idx) => {
-      msg += `🛍 *${idx + 1}. ${item.name}*\n  Prix: ${item.price.toLocaleString()} FCFA\n  Qté: ${item.quantity}\n------------------------------------------\n`;
+      msg += `🛍 *${idx + 1}. ${item.name}*\n  Price: #${item.price.toLocaleString()}\n  Qty: ${item.quantity}\n------------------------------------------\n`;
     });
-    msg += `\n🎯 *TOTAL GÉNÉRAL:* ${cartTotal.toLocaleString()} FCFA\n\nMerci de confirmer la disponibilité pour expédition immédiate !`;
+    msg += `\n🎯 *GRAND TOTAL:* #${cartTotal.toLocaleString()}\n\nPlease confirm availability for immediate dispatch!`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // Filter products by search term and selected category
-  const getDisplayedProducts = () => {
+  const getFilteredProducts = () => {
     let list = products;
 
     if (searchTerm.trim()) {
@@ -166,7 +175,12 @@ export default function ClientApp() {
     return list;
   };
 
-  const displayedProducts = getDisplayedProducts();
+  const filteredProducts = getFilteredProducts();
+  
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const displayedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-gray-900 font-sans antialiased relative">
@@ -187,7 +201,7 @@ export default function ClientApp() {
               <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 flex items-center justify-center" title="WhatsApp"><Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></a>
               <a href={FACEBOOK_URL} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center" title="Facebook">f</a>
               <a href={TIKTOK_URL} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 text-zinc-900 flex items-center justify-center" title="TikTok"><Video className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></a>
-              <a href="#admin" className="p-1.5 rounded-lg bg-zinc-100 hover:bg-amber-100 text-zinc-600 hover:text-amber-600 flex items-center justify-center transition-colors" title="Tableau de bord Admin">
+              <a href="#admin" className="p-1.5 rounded-lg bg-zinc-100 hover:bg-amber-100 text-zinc-600 hover:text-amber-600 flex items-center justify-center transition-colors" title="Admin Dashboard">
                 <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </a>
             </div>
@@ -205,16 +219,16 @@ export default function ClientApp() {
           <div>
             <div className="flex items-center gap-2 mb-2.5">
               <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> Boutique: {storeBranch}
+                <MapPin className="w-3 h-3" /> Branch: {storeBranch}
               </span>
             </div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight">Z IKENNA GLOBAL COSMETICS</h1>
-            <p className="text-zinc-400 text-xs mt-1">Commandez vos articles préférés pour la boutique de {storeBranch} instantanément via WhatsApp.</p>
+            <p className="text-zinc-400 text-xs mt-1">Order your favorite items for the {storeBranch} branch instantly via WhatsApp.</p>
           </div>
           <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0">
-            <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Livraison Rapide</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Fast Delivery</p>
             <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1 mt-0.5">
-              <Smartphone className="w-3.5 h-3.5" /> <span>Commande via WhatsApp</span>
+              <Smartphone className="w-3.5 h-3.5" /> <span>Order via WhatsApp</span>
             </p>
           </div>
         </div>
@@ -225,7 +239,7 @@ export default function ClientApp() {
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
             <input 
               type="text" 
-              placeholder="Rechercher un produit, une référence..." 
+              placeholder="Search product, reference..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white text-sm text-black border border-gray-200 pl-10 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-[#f68b1e] focus:ring-1 focus:ring-[#f68b1e] transition-all shadow-xs"
@@ -241,7 +255,7 @@ export default function ClientApp() {
         {/* CONTENT LAYOUT WITH CATEGORY SIDEBAR */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
           
-          {/* SIDEBAR CATEGORY MENU (Website 1 Feature) */}
+          {/* SIDEBAR CATEGORY MENU */}
           <aside className="md:col-span-1 w-full space-y-4">
             <div className="bg-white rounded-2xl p-4 border border-gray-200/60 shadow-xs">
               <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 px-2 flex items-center space-x-1.5">
@@ -303,71 +317,100 @@ export default function ClientApp() {
             </div>
           </aside>
 
-          {/* PRODUCTS GRID */}
-          <div className="md:col-span-3">
+          {/* PRODUCTS GRID & PAGINATION */}
+          <div className="md:col-span-3 space-y-6">
             {isLoading ? (
               <div className="flex justify-center py-20">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f68b1e]"></div>
               </div>
-            ) : displayedProducts.length === 0 ? (
+            ) : filteredProducts.length === 0 ? (
               <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
-                <p className="text-gray-400 text-sm">Aucun produit disponible dans cette sélection pour la boutique de {storeBranch}.</p>
+                <p className="text-gray-400 text-sm">No products available in this selection for the {storeBranch} branch.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {displayedProducts.map((p) => {
-                  const itemQtyInCart = getProductCartQty(p.id);
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {displayedProducts.map((p) => {
+                    const itemQtyInCart = getProductCartQty(p.id);
 
-                  return (
-                    <div key={p.id} className="bg-white rounded-xl border border-gray-200/60 overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:shadow-lg relative">
-                      <button className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-500 cursor-pointer">
-                        <Heart className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="relative bg-gray-50 aspect-[4/5] w-full overflow-hidden flex items-center justify-center border-b border-gray-100">
-                        <img src={p.image_url} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
-                        <div className="absolute bottom-2 left-2 z-10">
-                          <span className="bg-[#f68b1e] text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md">
-                            {p.quantity} en stock
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3 flex-1 flex flex-col justify-between bg-white">
-                        <div>
-                          <div className="flex items-center space-x-1 mb-1">
-                            <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">Z IKENNA GLOBAL</span>
-                            <span className="text-blue-500 text-[10px] font-bold">✔</span>
+                    return (
+                      <div key={p.id} className="bg-white rounded-xl border border-gray-200/60 overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:shadow-lg relative">
+                        <button className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-500 cursor-pointer">
+                          <Heart className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="relative bg-gray-50 aspect-[4/5] w-full overflow-hidden flex items-center justify-center border-b border-gray-100">
+                          <img src={p.image_url} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
+                          <div className="absolute bottom-2 left-2 z-10">
+                            <span className="bg-[#f68b1e] text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md">
+                              {p.quantity} in stock
+                            </span>
                           </div>
-                          <h3 className="text-xs text-gray-700 line-clamp-2 min-h-[2rem] leading-tight font-medium">
-                            {p.name} {p.description && `• ${p.description}`}
-                          </h3>
-                          <div className="flex items-center space-x-1 mt-1.5">
-                            <div className="flex text-amber-400">
-                              {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
+                        </div>
+                        <div className="p-3 flex-1 flex flex-col justify-between bg-white">
+                          <div>
+                            <div className="flex items-center space-x-1 mb-1">
+                              <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">Z IKENNA GLOBAL</span>
+                              <span className="text-blue-500 text-[10px] font-bold">✔</span>
                             </div>
-                            <span className="text-[10px] text-gray-400 font-medium">(4.9)</span>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <p className="text-sm font-black text-[#f68b1e] tracking-tight mb-2">#{p.price?.toLocaleString()} FCFA</p>
-                          <div className="mt-2.5">
-                            {itemQtyInCart > 0 ? (
-                              <div className="flex items-center justify-between border border-[#f68b1e] rounded-lg overflow-hidden bg-white h-7 shadow-sm">
-                                <button onClick={() => changeQuantity(p, -1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold cursor-pointer">-</button>
-                                <span className="w-full text-center text-xs font-black text-black">{itemQtyInCart}</span>
-                                <button onClick={() => changeQuantity(p, 1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold cursor-pointer">+</button>
+                            <h3 className="text-xs text-gray-700 line-clamp-2 min-h-[2rem] leading-tight font-medium">
+                              {p.name} {p.description && `• ${p.description}`}
+                            </h3>
+                            <div className="flex items-center space-x-1 mt-1.5">
+                              <div className="flex text-amber-400">
+                                {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
                               </div>
-                            ) : (
-                              <button onClick={() => addToCart(p)} className="w-full bg-[#f68b1e] hover:bg-[#e07a16] text-white font-bold py-1.5 rounded-lg text-xs tracking-wide transition-all cursor-pointer">
-                                Ajouter au panier
-                              </button>
-                            )}
+                              <span className="text-[10px] text-gray-400 font-medium">(4.9)</span>
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <p className="text-sm font-black text-[#f68b1e] tracking-tight mb-2">#{p.price?.toLocaleString()}</p>
+                            <div className="mt-2.5">
+                              {itemQtyInCart > 0 ? (
+                                <div className="flex items-center justify-between border border-[#f68b1e] rounded-lg overflow-hidden bg-white h-7 shadow-sm">
+                                  <button onClick={() => changeQuantity(p, -1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold cursor-pointer">-</button>
+                                  <span className="w-full text-center text-xs font-black text-black">{itemQtyInCart}</span>
+                                  <button onClick={() => changeQuantity(p, 1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold cursor-pointer">+</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => addToCart(p)} className="w-full bg-[#f68b1e] hover:bg-[#e07a16] text-white font-bold py-1.5 rounded-lg text-xs tracking-wide transition-all cursor-pointer">
+                                  Add to Cart
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                {/* PAGINATION CONTROLS */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-gray-200/60 shadow-xs mt-6">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Previous</span>
+                    </button>
+
+                    <div className="text-xs font-semibold text-gray-600">
+                      Page <span className="font-bold text-black">{currentPage}</span> of <span className="font-bold text-black">{totalPages}</span>
                     </div>
-                  );
-                })}
-              </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -386,11 +429,11 @@ export default function ClientApp() {
           <div className="w-full max-w-sm bg-white h-full p-5 flex flex-col justify-between shadow-xl">
             <div>
               <div className="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 className="font-bold text-gray-900 uppercase text-xs">Votre Panier ({cartCount})</h3>
+                <h3 className="font-bold text-gray-900 uppercase text-xs">Your Cart ({cartCount})</h3>
                 <button onClick={() => setIsCartOpen(false)} className="text-gray-400 text-xl font-light cursor-pointer">&times;</button>
               </div>
               {cart.length === 0 ? (
-                <p className="text-center text-gray-400 text-xs py-10">Votre panier est vide.</p>
+                <p className="text-center text-gray-400 text-xs py-10">Your cart is empty.</p>
               ) : (
                 <div className="space-y-3 overflow-y-auto max-h-[75vh]">
                   {cart.map(item => (
@@ -399,7 +442,7 @@ export default function ClientApp() {
                         <img src={item.image_url} alt="" className="w-10 h-10 object-cover rounded bg-white border" />
                         <div>
                           <h4 className="text-sm font-extrabold text-black line-clamp-1">{item.name}</h4>
-                          <p className="text-sm font-black text-[#f68b1e]">{item.price?.toLocaleString()} FCFA</p>
+                          <p className="text-sm font-black text-[#f68b1e]">#{item.price?.toLocaleString()}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-1.5 bg-white border rounded p-0.5">
@@ -416,10 +459,10 @@ export default function ClientApp() {
               <div className="border-t pt-3">
                 <div className="flex justify-between items-baseline font-bold mb-3">
                   <span className="text-gray-400 text-xs uppercase">Total:</span>
-                  <span className="text-lg font-black text-black">{cartTotal.toLocaleString()} FCFA</span>
+                  <span className="text-lg font-black text-black">#{cartTotal.toLocaleString()}</span>
                 </div>
                 <button onClick={handleWhatsAppCheckout} className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-xs uppercase text-center block cursor-pointer">
-                  Commander sur WhatsApp
+                  Order via WhatsApp
                 </button>
               </div>
             )}
