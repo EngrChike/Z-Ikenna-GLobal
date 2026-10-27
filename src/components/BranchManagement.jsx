@@ -2,7 +2,7 @@ import React from 'react';
 import { MapPin, Trash2, Users, Edit } from 'lucide-react';
 
 export default function BranchManagement({
-  branches,
+  branches = [],
   branchName,
   setBranchName,
   branchLocation,
@@ -90,12 +90,14 @@ export default function BranchManagement({
                     <td className="p-3.5 text-slate-500">{b.location || 'N/A'}</td>
                     <td className="p-3.5 flex items-center justify-end gap-3">
                       <button 
+                        type="button"
                         onClick={() => { setEditingBranch(b); setBranchName(b.name); setBranchLocation(b.location || ''); }} 
                         className="text-blue-600 font-bold hover:text-blue-800 flex items-center bg-blue-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                       >
                         <Edit className="w-3 h-3 mr-1" /> Edit
                       </button>
                       <button 
+                        type="button"
                         onClick={() => handleDeleteBranch && handleDeleteBranch(b.id)} 
                         className="text-red-600 font-bold hover:text-red-800 flex items-center bg-red-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                       >
