@@ -101,13 +101,14 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       }
 
       const { data, error } = await query;
+      
       if (error) {
         console.error("Supabase fetch error:", error);
         return;
       }
       
       if (data) {
-        // Sort descending locally to support string dates or timestamps reliably
+        console.log("Fetched Sales Successfully from Supabase:", data);
         const sortedData = [...data].sort((a, b) => {
           const dateA = new Date(a.created_at || a.date);
           const dateB = new Date(b.created_at || b.date);
