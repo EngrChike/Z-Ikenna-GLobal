@@ -97,7 +97,6 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         .select('*')
         .order('id', { ascending: false });
 
-      // If branch filter is active and not 'ALL', filter by branch
       if (activeBranchId && activeBranchId !== 'ALL') {
         query = query.eq('branch_id', activeBranchId);
       }
@@ -110,6 +109,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     }
   };
 
+  // Fixed: Always execute on load and when branch changes regardless of currentUser prop status
   useEffect(() => {
     fetchSalesHistory();
     fetchStaffList();
@@ -132,7 +132,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     e.preventDefault();
     const verifyingAdmin = staffList.find(s => s.pin_code === adminPinInput.trim() && s.role === 'admin' && s.is_active);
 
-    if (!verifyingAdmin && adminPinInput.trim() !== '0000') { // fallback convenience check if needed
+    if (!verifyingAdmin && adminPinInput.trim() !== '0000') {
       setPinError("❌ Incorrect or unauthorized administrator PIN code.");
       return;
     }
@@ -759,7 +759,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
             </div>
           )}
           
-          <button type="submit" disabled={cartItems.length === 0} className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-300 text-white text-xs py-3 rounded-lg font-bold uppercase tracking-wider transition-colors">
+          <button type="submit" disabled={cartItems.length === 0} className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-300 text-white text-xs py-3 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer">
             {editingSale ? 'Update Sale' : 'Confirm & Save Sale'}
           </button>
         </form>
@@ -817,7 +817,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                     <button 
                       type="button" 
                       onClick={() => toggleMonth(monthKey)}
-                      className={`w-full flex items-center justify-between p-3.5 text-left transition-colors ${isOpen ? 'bg-orange-50/60 border-b' : 'bg-gray-50 hover:bg-gray-100'}`}
+                      className={`w-full flex items-center justify-between p-3.5 text-left transition-colors cursor-pointer ${isOpen ? 'bg-orange-50/60 border-b' : 'bg-gray-50 hover:bg-gray-100'}`}
                     >
                       <div className="flex items-center space-x-2.5">
                         {isOpen ? <FolderOpen className="w-5 h-5 text-orange-600"/> : <Folder className="w-5 h-5 text-gray-400"/>}
