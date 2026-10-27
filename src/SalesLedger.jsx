@@ -18,7 +18,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   // Editing Sale State
   const [editingSale, setEditingSale] = useState(null);
 
-  // Adding Item State (with Search functionality)
+  // Adding Item State
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [cartProductId, setCartProductId] = useState('');
@@ -38,16 +38,13 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
   // Search & History Filtering State
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Current Month Key format: "YYYY-MM"
   const currentMonthKey = useMemo(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }, []);
 
-  // State for collapsible month folders
   const [expandedMonths, setExpandedMonths] = useState({ [currentMonthKey]: true });
 
-  // Handle clicking outside of the searchable dropdown to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -58,7 +55,6 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Optimized Search Filter (Limits to 50 results for massive catalogs)
   const filteredDropdownProducts = useMemo(() => {
     const activeProducts = products.filter(p => !p.is_archived);
     if (!productSearchTerm) return activeProducts.slice(0, 50);
@@ -69,7 +65,6 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       .slice(0, 50);
   }, [products, productSearchTerm]);
 
-  // Fetch sales history with robust fallback for staff roles
   const fetchSalesHistory = async () => {
     try {
       let query = supabase
@@ -77,7 +72,6 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         .select('*')
         .order('id', { ascending: false });
 
-      // If user is not admin, filter by staff_id or staff_name to ensure history displays correctly
       if (currentUser?.role !== 'admin') {
         if (currentUser?.id) {
           query = query.or(`staff_id.eq.${currentUser.id},staff_name.eq.${currentUser.full_name || currentUser.name}`);
@@ -102,7 +96,6 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     }
   }, [currentUser, activeBranchId]);
 
-  // Sync cart to local storage
   useEffect(() => {
     localStorage.setItem('akuDonCart', JSON.stringify(cartItems));
   }, [cartItems]);
@@ -184,7 +177,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
             .from('products')
             .select('quantity')
             .eq('id', item.productId)
-            .single();
+            .maybeSingle();
 
           if (!fetchErr && prodData) {
             const restoredQty = (prodData.quantity || 0) + item.qty;
@@ -204,7 +197,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
           .from('customers')
           .select('total_debt')
           .eq('id', sale.customer_id)
-          .single();
+          .maybeSingle();
 
         if (custData) {
           const newDebt = Math.max(0, (parseFloat(custData.total_debt) || 0) - debtReduction);
@@ -217,23 +210,37 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
     }
   };
 
+  // --- ACCURATE STOCK DEDUCTION LOGIC ---
   const deductStockForCart = async (items) => {
     for (const item of items) {
       if (item.productId) {
+        // Fetch current live product quantity directly from database
         const { data: freshProd, error: fetchErr } = await supabase
           .from('products')
           .select('quantity')
           .eq('id', item.productId)
-          .single();
+          .maybeSingle();
 
-        if (fetchErr) continue;
-        const currentQty = freshProd ? freshProd.quantity : 0;
-        const newStock = Math.max(0, currentQty - item.qty);
+        if (fetchErr || !freshProd) {
+          console.error(`Error fetching stock for product ${item.productId}:`, fetchErr);
+          continue;
+        }
 
-        await supabase
+        const currentStock = freshProd.quantity || 0;
+        const newStock = Math.max(0, currentStock - item.qty);
+
+        // Update database with reduced quantity
+        const { error: updateErr } = await supabase
           .from('products')
-          .update({ quantity: newStock, stock_status: newStock > 0 })
+          .update({ 
+            quantity: newStock, 
+            stock_status: newStock > 0 
+          })
           .eq('id', item.productId);
+
+        if (updateErr) {
+          console.error(`Error deducting stock for product ${item.productId}:`, updateErr);
+        }
       }
     }
   };
@@ -317,6 +324,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         await supabase.from('customer_history').insert([salePayload]);
       }
 
+      // Deduct stock in Supabase database
       await deductStockForCart(cartItems);
 
       setLedgerForm({ customerId: 'walkin', newName: '', newPhone: '', initialPaid: '' });
@@ -324,8 +332,9 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       setEditingSale(null);
       localStorage.removeItem('akuDonCart');
       
-      if (fetchProducts) fetchProducts();
-      if (fetchCustomers) fetchCustomers();
+      // Immediately refresh products state so new reduced stock displays instantly
+      if (fetchProducts) await fetchProducts();
+      if (fetchCustomers) await fetchCustomers();
       await fetchSalesHistory();
       
       alert(editingSale ? 'Sale updated successfully!' : 'Sale saved successfully!');
@@ -342,8 +351,8 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       await revertSaleStockAndDebt(sale);
       await supabase.from('customer_history').delete().eq('id', sale.id);
       alert("Sale deleted successfully!");
-      if (fetchProducts) fetchProducts();
-      if (fetchCustomers) fetchCustomers();
+      if (fetchProducts) await fetchProducts();
+      if (fetchCustomers) await fetchCustomers();
       await fetchSalesHistory();
     } catch (err) {
       alert(`Error: ${err.message}`);
