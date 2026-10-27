@@ -310,7 +310,7 @@ export default function ClientApp() {
                 </button>
 
                 <div className="pt-2 pb-1 border-t border-gray-100 mt-2">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Cosmetics</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Collections</span>
                 </div>
 
                 {categories.map(cat => {
