@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import AdminApp from './AdminApp';
 import { supabase } from './utils/supabaseClient';
-import AdminPortal from './AdminPortal';
-import { ShoppingCart, ShieldCheck, Smartphone, Star, Heart, Video, Search, X, Menu, Sparkles, PackageOpen, MapPin } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, Smartphone, Video, Search, X, Menu, Sparkles, PackageOpen, MapPin, Star, Heart } from 'lucide-react';
 
 export default function App() {
+  const [isAdminRoute, setIsAdminRoute] = useState(window.location.hash === '#admin');
   const [view, setView] = useState('client'); 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -18,6 +19,14 @@ export default function App() {
   const WHATSAPP_NUMBER = '+2347060433000'; 
   const FACEBOOK_URL = 'https://facebook.com/profile.php?id=61590626370497'; 
   const TIKTOK_URL = 'https://tiktok.com/@your-profile'; 
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsAdminRoute(window.location.hash === '#admin');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     fetchProductsAndCategories();
@@ -44,10 +53,12 @@ export default function App() {
   };
 
   const handleViewToggle = () => {
-    if (view === 'client') {
-      setView('admin');
+    if (window.location.hash === '#admin') {
+      window.location.hash = '';
+      setIsAdminRoute(false);
     } else {
-      setView('client');
+      window.location.hash = '#admin';
+      setIsAdminRoute(true);
     }
   };
 
@@ -90,7 +101,7 @@ export default function App() {
 
   const handleWhatsAppCheckout = () => {
     if (cart.length === 0) return;
-    let msg = '✨ *Z IKENNA GLOBAL - NEW ORDER* ✨\n------------------------------------------\n\n';
+    let msg = '✨ *CHIKE GLOBAL - NEW ORDER* ✨\n------------------------------------------\n\n';
     cart.forEach((item, idx) => {
       msg += `🛍️ *${idx + 1}. ${item.name}*\n   Price: #${item.price.toLocaleString()}\n   Qty: ${item.quantity}\n------------------------------------------\n`;
     });
@@ -115,7 +126,7 @@ export default function App() {
     }
 
     if (selectedCategory !== 'all') {
-      return list.filter(p => p.category_id === Number(selectedCategory));
+      return list.filter(p => String(p.category_id) === String(selectedCategory));
     }
 
     return list;
@@ -123,6 +134,27 @@ export default function App() {
 
   const displayedProducts = getDisplayedProducts();
 
+  // IF ADMIN ROUTE, RENDER THE FULLY UPGRADED ADMIN APP COMPONENT
+  if (isAdminRoute) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#f8fafc]">
+        <div className="bg-black text-white text-xs px-4 py-2.5 flex justify-between items-center z-50">
+          <span className="font-bold uppercase tracking-wider">Chike Global Admin Dashboard</span>
+          <button 
+            onClick={() => { window.location.hash = ''; setIsAdminRoute(false); }}
+            className="hover:text-amber-400 font-bold transition-colors cursor-pointer"
+          >
+            ← Retour à la boutique publique
+          </button>
+        </div>
+        <div className="flex-grow">
+          <AdminApp currentUser={{ role: 'admin', full_name: 'Admin HQ' }} supabase={supabase} setView={() => { window.location.hash = ''; setIsAdminRoute(false); }} />
+        </div>
+      </div>
+    );
+  }
+
+  // CLIENT STOREFRONT VIEW (WITH CATEGORIES)
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-gray-900 font-sans antialiased relative">
       
@@ -132,39 +164,18 @@ export default function App() {
           
           <div 
             className="flex items-center space-x-2.5 cursor-pointer shrink-0 group select-none" 
-            onClick={() => { setView('client'); setSelectedCategory('home'); setSearchTerm(''); }}
+            onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }}
           >
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-full h-full">
-                <defs>
-                  <linearGradient id="dark-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#27272a" />
-                    <stop offset="100%" stopColor="#09090b" />
-                  </linearGradient>
-                </defs>
-                <rect width="100" height="100" rx="22" fill="url(#dark-bg)" />
-                <rect width="96" height="96" x="2" y="2" rx="20" fill="none" stroke="#f68b1e" strokeWidth="4" />
-                <text 
-                  x="50%" 
-                  y="56%" 
-                  fontFamily="system-ui, -apple-system, Arial, sans-serif" 
-                  fontWeight="900" 
-                  fontSize="36" 
-                  fill="#f68b1e" 
-                  textAnchor="middle" 
-                  dominantBaseline="middle" 
-                  letterSpacing="1">
-                  ZIG
-                </text>
-              </svg>
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center bg-zinc-900 shadow-md group-hover:scale-105 transition-transform duration-200">
+              <span className="font-black text-amber-500 text-lg">CG</span>
             </div>
 
             <div className="flex flex-col justify-center">
               <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">
-                Z IKENNA GLOBAL
+                C H I K E GLOBAL
               </span>
               <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5">
-                COSMETICS
+                COLLECTION
               </span>
             </div>
           </div>
@@ -204,250 +215,234 @@ export default function App() {
 
             <button 
               onClick={handleViewToggle} 
-              className="px-2.5 py-1.5 text-xs rounded-xl font-bold border border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center space-x-1.5 shrink-0"
+              className="px-2.5 py-1.5 text-xs rounded-xl font-bold border border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center space-x-1.5 shrink-0 cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-[#f68b1e]" />
-              <span className="hidden md:inline">{view === 'client' ? 'Admin Portal' : 'Back to Shop'}</span>
+              <span className="hidden md:inline">Admin Portal</span>
             </button>
 
-            {view === 'client' && (
-              <button 
-                onClick={() => setIsCartOpen(true)} 
-                className="relative bg-black text-white p-2.5 rounded-xl flex items-center space-x-2 hover:bg-zinc-800 transition-colors shrink-0"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                {cartCount > 0 && (
-                  <span className="bg-[#f68b1e] text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
-            )}
+            <button 
+              onClick={() => setIsCartOpen(true)} 
+              className="relative bg-black text-white p-2.5 rounded-xl flex items-center space-x-2 hover:bg-zinc-800 transition-colors shrink-0 cursor-pointer"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              {cartCount > 0 && (
+                <span className="bg-[#f68b1e] text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {cartCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
       {/* CLIENT APP VIEW */}
-      {view === 'client' && (
-        <main className="max-w-7xl w-full mx-auto p-4 md:py-8 flex flex-col md:grid md:grid-cols-4 gap-6">
-          
-          {/* BANNER & SEARCH SECTION */}
-          <div className="order-1 md:col-span-4 flex flex-col gap-6">
-            <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 border border-zinc-800 flex flex-col md:flex-row justify-between items-center">
-              <div>
-                <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20 inline-flex items-center space-x-1.5">
-                  <Sparkles className="w-3 h-3" />
-                  <span>{selectedCategory === 'home' ? 'Randomized Showcase' : selectedCategory === 'all' ? 'Full Catalog' : 'Category Collection'}</span>
-                </span>
-                <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">Z IKENNA GLOBAL</h1>
-                <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp.</p>
-                
-                {/* Physical Store Address with Modern Location Icon */}
-                <div className="mt-3.5 flex items-center space-x-2 text-xs text-zinc-300 font-medium bg-white/5 py-1.5 px-3 rounded-lg border border-white/10 w-fit">
-                  <MapPin className="w-4 h-4 text-[#f68b1e] shrink-0" />
-                  <span>Abia Plaza B56 Upstairs, Trade Fair Lagos, Nigeria</span>
-                </div>
-              </div>
-              <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0 shrink-0">
-                <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Fast Dispatch</p>
-                <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1 mt-0.5">
-                  <Smartphone className="w-3.5 h-3.5" /> <span>WhatsApp Checkout</span>
-                </p>
+      <main className="max-w-7xl w-full mx-auto p-4 md:py-8 flex flex-col md:grid md:grid-cols-4 gap-6">
+        
+        {/* BANNER & SEARCH SECTION */}
+        <div className="order-1 md:col-span-4 flex flex-col gap-6">
+          <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950 text-white rounded-2xl p-6 md:p-8 border border-zinc-800 flex flex-col md:flex-row justify-between items-center">
+            <div>
+              <span className="bg-[#f68b1e]/10 text-[#f68b1e] text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-[#f68b1e]/20 inline-flex items-center space-x-1.5">
+                <Sparkles className="w-3 h-3" />
+                <span>{selectedCategory === 'home' ? 'Randomized Showcase' : selectedCategory === 'all' ? 'Full Catalog' : 'Category Collection'}</span>
+              </span>
+              <h1 className="text-xl md:text-3xl font-black mt-2.5 tracking-tight">CHIKE GLOBAL COLLECTION</h1>
+              <p className="text-zinc-400 text-xs mt-1">Select your items and place your order instantly via WhatsApp.</p>
+              
+              <div className="mt-3.5 flex items-center space-x-2 text-xs text-zinc-300 font-medium bg-white/5 py-1.5 px-3 rounded-lg border border-white/10 w-fit">
+                <MapPin className="w-4 h-4 text-[#f68b1e] shrink-0" />
+                <span>Cocovico Marché, Abidjan, Côte d'Ivoire</span>
               </div>
             </div>
+            <div className="bg-white/5 px-4 py-2.5 rounded-xl border border-white/10 mt-4 md:mt-0 shrink-0">
+              <p className="text-[10px] text-zinc-400 uppercase tracking-wider">Fast Dispatch</p>
+              <p className="text-[#f68b1e] font-bold text-sm flex items-center justify-center space-x-1 mt-0.5">
+                <Smartphone className="w-3.5 h-3.5" /> <span>WhatsApp Checkout</span>
+              </p>
+            </div>
+          </div>
 
-            <div className="relative px-1">
-              <div className="relative flex items-center">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-                <input 
-                  type="text" 
-                  placeholder="Search for items, brands, cleansers..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-white text-sm text-black border border-gray-200 pl-10 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-[#f68b1e] focus:ring-1 focus:ring-[#f68b1e] transition-all shadow-xs"
-                />
-                {searchTerm && (
-                  <button 
-                    onClick={() => setSearchTerm('')} 
-                    className="absolute right-3 p-1 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+          <div className="relative px-1">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
+              <input 
+                type="text" 
+                placeholder="Search for hairs, cosmetics, products..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white text-sm text-black border border-gray-200 pl-10 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-[#f68b1e] focus:ring-1 focus:ring-[#f68b1e] transition-all shadow-xs"
+              />
               {searchTerm && (
-                <p className="text-[11px] text-gray-400 mt-1.5 ml-1">
-                  Showing results for "<span className="text-zinc-700 font-medium">{searchTerm}</span>" ({displayedProducts.length} items found)
-                </p>
+                <button 
+                  onClick={() => setSearchTerm('')} 
+                  className="absolute right-3 p-1 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               )}
             </div>
-          </div>
-
-          {/* SIDEBAR CATEGORY MENU */}
-          <aside className="order-2 md:order-2 md:col-span-1 w-full shrink-0 space-y-4">
-            <div className="bg-white rounded-2xl p-4 border border-gray-200/60 shadow-xs">
-              <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 px-2 flex items-center space-x-1.5">
-                <Menu className="w-4 h-4 text-[#f68b1e]" />
-                <span>Categories</span>
-              </h3>
-              
-              <nav className="space-y-1">
-                <button
-                  onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${
-                    selectedCategory === 'home' && !searchTerm 
-                      ? 'bg-[#f68b1e] text-white shadow-md' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Featured Showcase</span>
-                </button>
-
-                <button
-                  onClick={() => { setSelectedCategory('all'); setSearchTerm(''); }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 ${
-                    selectedCategory === 'all' && !searchTerm 
-                      ? 'bg-[#f68b1e] text-white shadow-md' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <PackageOpen className="w-3.5 h-3.5" />
-                  <span>All Products</span>
-                </button>
-
-                <div className="pt-2 pb-1 border-t border-gray-100 mt-2">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Collections</span>
-                </div>
-
-                {categories.map(cat => {
-                  const count = products.filter(p => p.category_id === cat.id).length;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => { setSelectedCategory(String(cat.id)); setSearchTerm(''); }}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                        selectedCategory === String(cat.id) && !searchTerm 
-                          ? 'bg-[#f68b1e] text-white shadow-md' 
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="truncate">{cat.name}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                        selectedCategory === String(cat.id) && !searchTerm ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          </aside>
-
-          {/* MAIN CATALOG AREA (PRODUCTS) */}
-          <div className="order-3 md:order-3 md:col-span-3">
-            {displayedProducts.length === 0 ? (
-              <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
-                <p className="text-gray-400 text-sm">No cosmetics products found in this selection.</p>
-                <button onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }} className="mt-3 text-xs text-[#f68b1e] font-bold hover:underline">
-                  Return to featured showcase
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {displayedProducts.map((p) => {
-                  const itemQtyInCart = getProductCartQty(p.id);
-                  const isOutOfStock = p.quantity !== null ? p.quantity <= 0 : !p.stock_status;
-
-                  return (
-                    <div key={p.id} className="bg-white rounded-xl border border-gray-200/60 overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:shadow-lg relative">
-                      <button className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-500">
-                        <Heart className="w-3.5 h-3.5" />
-                      </button>
-
-                      <div className="relative bg-gray-50 aspect-[4/5] w-full overflow-hidden flex items-center justify-center border-b border-gray-100">
-                        <img src={p.image_url} alt={p.name} className="object-cover w-full h-full" />
-                        <div className="absolute bottom-2 left-2 z-10">
-                          <span className="bg-[#f68b1e] text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md">
-                            {p.quantity > 0 ? `${p.quantity} Left` : 'Out of Stock'}
-                          </span>
-                        </div>
-
-                        {isOutOfStock && (
-                          <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
-                            <span className="bg-zinc-800 text-white font-bold text-[10px] uppercase tracking-widest px-2.5 py-1 rounded">SOLD OUT</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-3 flex-1 flex flex-col justify-between bg-white">
-                        <div>
-                          <div className="flex items-center space-x-1 mb-1">
-                            <span className="font-extrabold text-xs text-zinc-900 group-hover:text-[#f68b1e] transition-colors">Z IKENNA GLOBAL</span>
-                            <span className="text-blue-500 text-[10px] font-bold">✔</span>
-                          </div>
-                          <h3 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem] leading-tight font-medium">
-                            {p.name} {p.description && `• ${p.description}`}
-                          </h3>
-                          
-                          <div className="flex items-center space-x-1 mt-1.5">
-                            <div className="flex text-amber-400">
-                              {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
-                            </div>
-                            <span className="text-[10px] text-gray-400 font-medium">(4.9)</span>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-3">
-                          <p className="text-sm font-black text-[#f68b1e] tracking-tight">#{p.price.toLocaleString()}</p>
-
-                          <div className="mt-2.5">
-                            {isOutOfStock ? (
-                              <button disabled className="w-full bg-gray-100 text-gray-400 text-[11px] font-bold py-1.5 rounded-lg cursor-not-allowed">
-                                Out of Stock
-                              </button>
-                            ) : itemQtyInCart > 0 ? (
-                              <div className="flex items-center justify-between border border-[#f68b1e] rounded-lg overflow-hidden bg-white h-7 shadow-sm">
-                                <button onClick={() => changeQuantity(p, -1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold">-</button>
-                                <span className="w-full text-center text-xs font-black text-black">{itemQtyInCart}</span>
-                                <button onClick={() => changeQuantity(p, 1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold">+</button>
-                              </div>
-                            ) : (
-                              <button onClick={() => addToCart(p)} className="w-full bg-[#f68b1e] hover:bg-[#e07a16] text-white font-bold py-1.5 rounded-lg text-xs tracking-wide transition-all">
-                                Add to Cart
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  );
-                })}
-              </div>
+            {searchTerm && (
+              <p className="text-[11px] text-gray-400 mt-1.5 ml-1">
+                Showing results for "<span className="text-zinc-700 font-medium">{searchTerm}</span>" ({displayedProducts.length} items found)
+              </p>
             )}
           </div>
+        </div>
 
-        </main>
-      )}
+        {/* SIDEBAR CATEGORY MENU (Website 1 Feature Retained) */}
+        <aside className="order-2 md:order-2 md:col-span-1 w-full shrink-0 space-y-4">
+          <div className="bg-white rounded-2xl p-4 border border-gray-200/60 shadow-xs">
+            <h3 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 px-2 flex items-center space-x-1.5">
+              <Menu className="w-4 h-4 text-[#f68b1e]" />
+              <span>Categories</span>
+            </h3>
+            
+            <nav className="space-y-1">
+              <button
+                onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }}
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
+                  selectedCategory === 'home' && !searchTerm 
+                    ? 'bg-[#f68b1e] text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Featured Showcase</span>
+              </button>
 
-      {/* ADMIN CONTROL PANEL COMPONENT */}
-      {view === 'admin' && (
-        <AdminPortal 
-          products={products} 
-          categories={categories}
-          fetchProducts={fetchProductsAndCategories} 
-          fetchCategories={fetchProductsAndCategories}
-          setView={setView} 
-        />
-      )}
+              <button
+                onClick={() => { setSelectedCategory('all'); setSearchTerm(''); }}
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
+                  selectedCategory === 'all' && !searchTerm 
+                    ? 'bg-[#f68b1e] text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <PackageOpen className="w-3.5 h-3.5" />
+                <span>All Products</span>
+              </button>
+
+              <div className="pt-2 pb-1 border-t border-gray-100 mt-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Collections</span>
+              </div>
+
+              {categories.map(cat => {
+                const count = products.filter(p => String(p.category_id) === String(cat.id)).length;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => { setSelectedCategory(String(cat.id)); setSearchTerm(''); }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                      selectedCategory === String(cat.id) && !searchTerm 
+                        ? 'bg-[#f68b1e] text-white shadow-md' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="truncate">{cat.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                      selectedCategory === String(cat.id) && !searchTerm ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+
+        {/* MAIN CATALOG AREA (PRODUCTS) */}
+        <div className="order-3 md:order-3 md:col-span-3">
+          {displayedProducts.length === 0 ? (
+            <div className="bg-white rounded-2xl p-16 text-center border border-gray-100">
+              <p className="text-gray-400 text-sm">No products found in this selection.</p>
+              <button onClick={() => { setSelectedCategory('home'); setSearchTerm(''); }} className="mt-3 text-xs text-[#f68b1e] font-bold hover:underline cursor-pointer">
+                Return to featured showcase
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {displayedProducts.map((p) => {
+                const itemQtyInCart = getProductCartQty(p.id);
+                const isOutOfStock = p.quantity !== null ? p.quantity <= 0 : !p.stock_status;
+
+                return (
+                  <div key={p.id} className="bg-white rounded-xl border border-gray-200/60 overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:shadow-lg relative">
+                    <button className="absolute top-2 right-2 z-10 p-1.5 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-500 cursor-pointer">
+                      <Heart className="w-3.5 h-3.5" />
+                    </button>
+
+                    <div className="relative bg-gray-50 aspect-[4/5] w-full overflow-hidden flex items-center justify-center border-b border-gray-100">
+                      <img src={p.image_url} alt={p.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300" />
+                      <div className="absolute bottom-2 left-2 z-10">
+                        <span className="bg-[#f68b1e] text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md">
+                          {p.quantity > 0 ? `${p.quantity} Left` : 'Out of Stock'}
+                        </span>
+                      </div>
+
+                      {isOutOfStock && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
+                          <span className="bg-zinc-800 text-white font-bold text-[10px] uppercase tracking-widest px-2.5 py-1 rounded">SOLD OUT</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3 flex-1 flex flex-col justify-between bg-white">
+                      <div>
+                        <div className="flex items-center space-x-1 mb-1">
+                          <span className="font-extrabold text-xs text-zinc-900">CHIKE GLOBAL</span>
+                          <span className="text-blue-500 text-[10px] font-bold">✔</span>
+                        </div>
+                        <h3 className="text-xs text-gray-600 line-clamp-2 min-h-[2rem] leading-tight font-medium">
+                          {p.name} {p.description && `• ${p.description}`}
+                        </h3>
+                        
+                        <div className="flex items-center space-x-1 mt-1.5">
+                          <div className="flex text-amber-400">
+                            {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-medium">(4.9)</span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3">
+                        <p className="text-sm font-black text-[#f68b1e] tracking-tight">#{p.price.toLocaleString()}</p>
+
+                        <div className="mt-2.5">
+                          {isOutOfStock ? (
+                            <button disabled className="w-full bg-gray-100 text-gray-400 text-[11px] font-bold py-1.5 rounded-lg cursor-not-allowed">
+                              Out of Stock
+                            </button>
+                          ) : itemQtyInCart > 0 ? (
+                            <div className="flex items-center justify-between border border-[#f68b1e] rounded-lg overflow-hidden bg-white h-7 shadow-sm">
+                              <button onClick={() => changeQuantity(p, -1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold cursor-pointer">-</button>
+                              <span className="w-full text-center text-xs font-black text-black">{itemQtyInCart}</span>
+                              <button onClick={() => changeQuantity(p, 1)} className="bg-[#f68b1e]/5 text-[#f68b1e] w-8 h-full flex items-center justify-center font-bold cursor-pointer">+</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => addToCart(p)} className="w-full bg-[#f68b1e] hover:bg-[#e07a16] text-white font-bold py-1.5 rounded-lg text-xs tracking-wide transition-all cursor-pointer">
+                              Add to Cart
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+      </main>
 
       {/* MOBILE FLOATING CART BUTTON */}
-      {view === 'client' && cartCount > 0 && (
+      {cartCount > 0 && (
         <button 
           onClick={() => setIsCartOpen(true)} 
-          className="fixed bottom-6 right-6 z-50 md:hidden bg-black text-white p-4 rounded-full shadow-2xl flex items-center justify-center space-x-2 active:scale-95 hover:bg-zinc-900 transition-all border border-zinc-800"
+          className="fixed bottom-6 right-6 z-50 md:hidden bg-black text-white p-4 rounded-full shadow-2xl flex items-center justify-center space-x-2 active:scale-95 hover:bg-zinc-900 transition-all border border-zinc-800 cursor-pointer"
         >
           <ShoppingCart className="w-6 h-6 text-[#f68b1e]" />
           <span className="bg-[#f68b1e] text-white text-xs font-black px-2 py-0.5 rounded-full">
@@ -466,7 +461,7 @@ export default function App() {
                   <ShoppingCart className="w-3.5 h-3.5 text-[#f68b1e]" />
                   <span>Your Bag ({cartCount})</span>
                 </h3>
-                <button onClick={() => setIsCartOpen(false)} className="text-gray-400 text-xl font-light">&times;</button>
+                <button onClick={() => setIsCartOpen(false)} className="text-gray-400 text-xl font-light cursor-pointer">&times;</button>
               </div>
               {cart.length === 0 ? (
                 <p className="text-center text-gray-400 text-xs py-10">Your cart is empty.</p>
@@ -482,9 +477,9 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-1.5 bg-white border rounded p-0.5">
-                        <button onClick={() => changeQuantity(item, -1)} className="px-1.5 text-gray-500 font-bold">-</button>
-                        <span className="text-xs font-bold px-1 text-black">{item.quantity}</span>
-                        <button onClick={() => changeQuantity(item, 1)} className="px-1.5 text-gray-500 font-bold">+</button>
+                        <button onClick={() => changeQuantity(item, -1)} className="px-1.5 text-gray-500 font-bold cursor-pointer">-</button>
+                        <span className="text-xs font-black px-1 text-black">{item.quantity}</span>
+                        <button onClick={() => changeQuantity(item, 1)} className="px-1.5 text-gray-500 font-bold cursor-pointer">+</button>
                       </div>
                     </div>
                   ))}
@@ -497,7 +492,7 @@ export default function App() {
                   <span className="text-gray-400 text-xs uppercase">Total:</span>
                   <span className="text-lg font-black text-black">#{cartTotal.toLocaleString()}</span>
                 </div>
-                <button onClick={handleWhatsAppCheckout} className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-xs uppercase text-center block flex items-center justify-center space-x-1.5">
+                <button onClick={handleWhatsAppCheckout} className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-xs uppercase text-center block flex items-center justify-center space-x-1.5 cursor-pointer">
                   <Smartphone className="w-4 h-4" />
                   <span>Order via WhatsApp</span>
                 </button>
@@ -506,6 +501,7 @@ export default function App() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
