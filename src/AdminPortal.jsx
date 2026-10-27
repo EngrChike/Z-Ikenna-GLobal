@@ -157,7 +157,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
     fetchStoreSettings();
   };
 
-  // --- AUTHENTICATION HANDLERS (SUPABASE SIGN IN & SIGN UP FIX) ---
+  // --- AUTHENTICATION HANDLERS ---
   const handleAdminAuth = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -166,7 +166,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
 
     try {
       if (isSignUpMode) {
-        // Sign Up New Admin Account with Metadata Payload
         const { data, error } = await supabase.auth.signUp({
           email: adminEmail.trim(),
           password: adminPassword,
@@ -181,7 +180,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
         if (error) {
           setAuthError(error.message);
         } else if (data?.user) {
-          // Sync with staff table if staff management requires staff record
           await supabase.from('staff').upsert({
             full_name: adminFullName.trim() || 'Admin User',
             pin_code: '1234',
@@ -196,7 +194,6 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
           }, 1000);
         }
       } else {
-        // Standard Sign In
         const { data, error } = await supabase.auth.signInWithPassword({
           email: adminEmail.trim(),
           password: adminPassword,
@@ -213,7 +210,7 @@ export default function AdminPortal({ currentUser, supabase, setView }) {
       }
     } catch (err) {
       setAuthError('An unexpected authentication error occurred.');
-    } fontally {
+    } finally {
       setAuthLoading(false);
     }
   };
