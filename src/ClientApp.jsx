@@ -192,7 +192,7 @@ export default function ClientApp() {
             </div>
             <div className="flex flex-col justify-center">
               <span className="font-black text-base sm:text-xl tracking-wider uppercase text-zinc-900 leading-none group-hover:text-amber-600 transition-colors">Z IKENNA GLOBAL</span>
-              <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5">COLLECTION</span>
+              <span className="text-[10px] sm:text-[11px] font-bold text-amber-500 tracking-[0.25em] uppercase leading-tight mt-0.5"><COSMETICS></COSMETICS></span>
             </div>
           </div>
 
@@ -310,7 +310,7 @@ export default function ClientApp() {
                 </button>
 
                 <div className="pt-2 pb-1 border-t border-gray-100 mt-2">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Collections</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 block mb-1">Cosmetics</span>
                 </div>
 
                 {categories.map(cat => {
