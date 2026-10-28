@@ -393,8 +393,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         staff_id: staffId,
         staff_name: staffName,
         goods: goodsDescription,
-        batch: cartItems.length === 1 ? cartItems[0].batch : 'MULTI-BATCH',
-        product_id: cartItems.length === 1 ? (cartItems[0].productId || cartItems[0].product_id) : null,
+        batch: cartItems.length === 1 ? cartItems[0[0].product_id) : null,
         qty: cartItems.reduce((sum, item) => sum + item.qty, 0),
         total: cartTotal,
         paid: paidAmount,
@@ -590,7 +589,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       `}</style>
 
       {/* LEFT COLUMN: ACCUMULATION & SALE FORM */}
-      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit space-y-4">
+      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit space-y-4 no-print">
         <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 pb-2 border-b flex justify-between items-center">
           <span>POS & Sale Checkout</span>
           {editingSale && (
@@ -810,7 +809,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
       </div>
 
       {/* RIGHT COLUMN: MONTHLY FOLDERS & SALES SEARCH */}
-      <div className="lg:col-span-2 space-y-4">
+      <div className="lg:col-span-2 space-y-4 no-print">
         
         {/* TODAY'S SALES & MONTHLY ARCHIVES PREVIEW SUMMARY */}
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
@@ -948,7 +947,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                 );
               })
             ) : (
-              <div className="text-center py-12 text-gray-400 text-xs bg-gray-50 rounded-xl border border-dashed">
+              <div className="text-center py-12 text-gray-400 text-xs bg-gray-50 rounded-xl border border-dashed no-print">
                 {searchTerm ? 'No sales match your search.' : 'No sales recorded in ledger.'}
               </div>
             )}
@@ -958,66 +957,71 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
       {/* --- INVOICE PRINTING MODAL --- */}
       {activeInvoiceSale && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 z-50">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-4 shadow-2xl border border-gray-200 space-y-4 max-h-[95vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 space-y-6 max-h-[95vh] overflow-y-auto">
             
-            {/* INVOICE PREVIEW CONTAINER - OPTIMIZED COMPACT FORMAT (FITS 20 ITEMS/PAGE) */}
-            <div id="printable-invoice-modal" className="bg-white p-4 border rounded-xl space-y-3 text-slate-900">
+            {/* INVOICE PREVIEW CONTAINER - PERFECT COPY OF Provided DESIGN */}
+            <div id="printable-invoice-modal" className="bg-white p-6 rounded-2xl border-2 border-gray-200 space-y-6 text-[#202737]">
               
               {/* Header */}
-              <div className="flex justify-between items-start border-b pb-2">
+              <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                 <div>
-                  <h1 className="text-base font-black tracking-wider uppercase text-slate-900 leading-tight">Z IKENNA GLOBAL RESOURCES</h1>
-                  <p className="text-[10px] text-slate-600 font-semibold mt-0.5 leading-tight">B56, ABIA PLAZA BBA TRADE FAIR COMPLEX UPSTAIR. LAGOS NIGERIA</p>
-                  <p className="text-[10px] text-slate-600 font-semibold leading-tight">WhatsApp: +2347060433000</p>
+                  <h1 className="text-xl font-black tracking-wider uppercase leading-tight">Z IKENNA GLOBAL RESOURCES</h1>
+                  <p className="text-[11px] font-semibold mt-1 leading-tight text-gray-600">B56, ABIA PLAZA BBA TRADE FAIR COMPLEX UPSTAIR. LAGOS NIGERIA</p>
+                  <p className="text-[11px] font-semibold leading-tight text-gray-600">WhatsApp: +2347060433000</p>
                 </div>
-                <div className="text-right">
-                  <span className="bg-slate-900 text-white font-bold text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">INVOICE</span>
-                  <p className="text-[10px] font-mono font-bold text-slate-700 mt-1">Ref: #{activeInvoiceSale.id}</p>
-                  <p className="text-[9px] text-slate-500">{activeInvoiceSale.date} | {activeInvoiceSale.time || 'N/A'}</p>
+                <div className="text-right flex flex-col items-end">
+                  {/* NEW "ZIG" LOGO BLOCK */}
+                  <div className="w-12 h-12 flex items-center justify-center bg-[#202737] rounded-xl text-white font-black text-xl mb-3">
+                    ZIG
+                  </div>
+                  <span className="bg-[#202737] text-white font-bold text-xs px-3 py-1 rounded uppercase tracking-wider">INVOICE</span>
+                  <p className="text-[11px] font-mono font-bold mt-2 text-gray-600">Ref: #{activeInvoiceSale.id}</p>
+                  <p className="text-[10px] text-gray-400">{activeInvoiceSale.date} | {activeInvoiceSale.time || 'N/A'}</p>
                 </div>
               </div>
 
               {/* Client Details */}
-              <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 grid grid-cols-2 gap-2 text-[11px]">
+              <div className="bg-[#f2f4f7] p-4 rounded-xl border border-gray-100 grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase">Customer Name</p>
-                  <p className="font-bold text-slate-900">{activeInvoiceSale.displayCustomer}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase">Customer Name</p>
+                  <p className="font-bold text-lg mt-0.5">{activeInvoiceSale.displayCustomer}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase">Phone Number</p>
-                  <p className="font-bold text-slate-900">{activeInvoiceSale.displayPhone || 'N/A'}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase">Phone Number</p>
+                  <p className="font-bold text-lg mt-0.5">{activeInvoiceSale.displayPhone || 'N/A'}</p>
                 </div>
               </div>
 
-              {/* Items Table - COMPACT FOR 20 ITEMS */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-[10px] border-collapse">
+              {/* Items Table */}
+              <div>
+                <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
-                      <th className="py-1 px-1.5">S/N</th>
-                      <th className="py-1 px-1.5">Item Description</th>
-                      <th className="py-1 px-1.5 text-center">Qty</th>
-                      <th className="py-1 px-1.5 text-right">Price (#)</th>
-                      <th className="py-1 px-1.5 text-right">Amount (#)</th>
+                    <tr className="bg-white text-gray-600 font-bold border-b border-gray-200">
+                      <th className="py-2.5 px-2">S/N</th>
+                      <th className="py-2.5 px-2">Item Description</th>
+                      <th className="py-2.5 px-2 text-center">Qty</th>
+                      <th className="py-2.5 px-2 text-right">Price (#)</th>
+                      <th className="py-2.5 px-2 text-right">Amount (#)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-gray-100">
                     {activeInvoiceSale.items && activeInvoiceSale.items.length > 0 ? (
                       activeInvoiceSale.items.map((item, i) => (
-                        <tr key={i} className="hover:bg-slate-50">
-                          <td className="py-1 px-1.5 text-slate-500 text-center">{i + 1}</td>
-                          <td className="py-1 px-1.5 font-medium text-slate-900">
-                            {item.name} {item.batch && <span className="text-[9px] text-orange-700">({item.batch})</span>}
+                        <tr key={i} className="hover:bg-[#fcfdfe]">
+                          <td className="py-2.5 px-2 text-gray-500">{i + 1}</td>
+                          <td className="py-2.5 px-2 font-medium">
+                            {/* "N/A" REMOVED HERE */}
+                            {item.name} {item.batch && <span className="text-[10px] text-orange-600 block">Batch: {item.batch}</span>}
                           </td>
-                          <td className="py-1 px-1.5 text-center font-bold text-slate-900">{item.qty}</td>
-                          <td className="py-1 px-1.5 text-right text-slate-800">#{item.price?.toLocaleString()}</td>
-                          <td className="py-1 px-1.5 text-right font-bold text-slate-900">#{(item.price * item.qty).toLocaleString()}</td>
+                          <td className="py-2.5 px-2 text-center font-bold text-lg">{item.qty}</td>
+                          <td className="py-2.5 px-2 text-right">#{item.price?.toLocaleString()}</td>
+                          <td className="py-2.5 px-2 text-right font-bold text-lg">#{(item.price * item.qty).toLocaleString()}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="5" className="py-2 text-center text-slate-500">{activeInvoiceSale.goods}</td>
+                        <td colSpan="5" className="py-3 px-2 text-center text-gray-500">{activeInvoiceSale.goods}</td>
                       </tr>
                     )}
                   </tbody>
@@ -1025,17 +1029,17 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
               </div>
 
               {/* Financial Totals */}
-              <div className="border-t border-slate-300 pt-2 space-y-1 text-[11px] flex flex-col items-end">
-                <div className="w-56 space-y-1">
-                  <div className="flex justify-between text-slate-700 font-semibold">
+              <div className="border-t border-gray-200 pt-5 space-y-2 text-xs flex flex-col items-end">
+                <div className="w-64 space-y-1.5">
+                  <div className="flex justify-between text-gray-700 font-semibold">
                     <span>Total Amount:</span>
-                    <span className="font-bold text-slate-900">#{(activeInvoiceSale.total || 0).toLocaleString()}</span>
+                    <span className="font-bold text-lg">#{(activeInvoiceSale.total || 0).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-emerald-700 font-semibold">
+                  <div className="flex justify-between text-[#148359] font-semibold">
                     <span>Amount Paid:</span>
-                    <span className="font-bold">#{(activeInvoiceSale.paid || 0).toLocaleString()}</span>
+                    <span className="font-bold text-lg">#{(activeInvoiceSale.paid || 0).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-rose-700 font-extrabold border-t border-slate-200 pt-1 text-xs">
+                  <div className="flex justify-between text-[#ed3745] font-extrabold border-t border-gray-100 pt-1.5 text-xl">
                     <span>Balance Due:</span>
                     <span>#{Math.max(0, (activeInvoiceSale.total || 0) - (activeInvoiceSale.paid || 0)).toLocaleString()}</span>
                   </div>
@@ -1043,7 +1047,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
               </div>
 
               {/* Footer Note */}
-              <div className="text-center pt-2 border-t border-slate-200 text-[9px] text-slate-500 font-medium">
+              <div className="text-center pt-4 border-t border-gray-200 text-[11px] text-gray-500 font-medium">
                 Thank you for your business! • Z Ikenna Global Resources
               </div>
 
@@ -1054,7 +1058,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
               <button
                 type="button"
                 onClick={() => setActiveInvoiceSale(null)}
-                className="w-1/2 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-xl uppercase transition-colors cursor-pointer"
+                className="w-1/2 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-xl uppercase transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -1063,7 +1067,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                 onClick={() => {
                   window.print();
                 }}
-                className="w-1/2 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-xl uppercase transition-colors flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
+                className="w-1/2 py-2.5 bg-[#202737] text-white hover:bg-slate-800 text-xs font-bold rounded-xl uppercase transition-colors flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print / Save PDF</span>
