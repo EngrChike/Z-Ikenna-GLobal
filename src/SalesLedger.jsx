@@ -559,6 +559,36 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
+      
+      {/* Dynamic PRINT CSS to isolate only the active invoice on 1 clean page */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-invoice-modal,
+          #printable-invoice-modal * {
+            visibility: visible !important;
+          }
+          #printable-invoice-modal {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+        }
+      `}</style>
+
       {/* LEFT COLUMN: ACCUMULATION & SALE FORM */}
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm h-fit space-y-4">
         <h3 className="font-bold text-xs uppercase tracking-wide text-gray-700 pb-2 border-b flex justify-between items-center">
@@ -928,64 +958,66 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
       {/* --- INVOICE PRINTING MODAL --- */}
       {activeInvoiceSale && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-200 space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 shadow-2xl border border-gray-200 space-y-4 max-h-[95vh] overflow-y-auto">
             
-            {/* INVOICE PREVIEW CONTAINER */}
-            <div id="printable-invoice" className="bg-white p-6 border rounded-xl space-y-6 text-slate-800">
+            {/* INVOICE PREVIEW CONTAINER - OPTIMIZED COMPACT FORMAT (FITS 20 ITEMS/PAGE) */}
+            <div id="printable-invoice-modal" className="bg-white p-4 border rounded-xl space-y-3 text-slate-900">
               
               {/* Header */}
-              <div className="flex justify-between items-start border-b pb-4">
+              <div className="flex justify-between items-start border-b pb-2">
                 <div>
-                  <h1 className="text-lg font-black tracking-wider uppercase text-slate-900">Z IKENNA GLOBAL RESOURCES</h1>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">B56, ABIA PLAZA BBA TRADE FAIR COMPLEX UPSTAIR. LAGOS NIGERIA</p>
-                  <p className="text-[11px] text-slate-500 font-semibold">WhatsApp: +2347060433000</p>
+                  <h1 className="text-base font-black tracking-wider uppercase text-slate-900 leading-tight">Z IKENNA GLOBAL RESOURCES</h1>
+                  <p className="text-[10px] text-slate-600 font-semibold mt-0.5 leading-tight">B56, ABIA PLAZA BBA TRADE FAIR COMPLEX UPSTAIR. LAGOS NIGERIA</p>
+                  <p className="text-[10px] text-slate-600 font-semibold leading-tight">WhatsApp: +2347060433000</p>
                 </div>
                 <div className="text-right">
-                  <span className="bg-slate-900 text-white font-bold text-xs px-3 py-1 rounded uppercase tracking-wider">INVOICE</span>
-                  <p className="text-[11px] font-mono font-bold text-slate-600 mt-2">Ref: #{activeInvoiceSale.id}</p>
-                  <p className="text-[10px] text-slate-400">{activeInvoiceSale.date} | {activeInvoiceSale.time || 'N/A'}</p>
+                  <span className="bg-slate-900 text-white font-bold text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">INVOICE</span>
+                  <p className="text-[10px] font-mono font-bold text-slate-700 mt-1">Ref: #{activeInvoiceSale.id}</p>
+                  <p className="text-[9px] text-slate-500">{activeInvoiceSale.date} | {activeInvoiceSale.time || 'N/A'}</p>
                 </div>
               </div>
 
               {/* Client Details */}
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 grid grid-cols-2 gap-4 text-xs">
+              <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 grid grid-cols-2 gap-2 text-[11px]">
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Customer Name</p>
-                  <p className="font-bold text-slate-800">{activeInvoiceSale.displayCustomer}</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase">Customer Name</p>
+                  <p className="font-bold text-slate-900">{activeInvoiceSale.displayCustomer}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Phone Number</p>
-                  <p className="font-bold text-slate-800">{activeInvoiceSale.displayPhone || 'N/A'}</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase">Phone Number</p>
+                  <p className="font-bold text-slate-900">{activeInvoiceSale.displayPhone || 'N/A'}</p>
                 </div>
               </div>
 
-              {/* Items Table */}
-              <div>
-                <table className="w-full text-left text-xs">
+              {/* Items Table - COMPACT FOR 20 ITEMS */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[10px] border-collapse">
                   <thead>
-                    <tr className="bg-slate-100 text-slate-600 font-bold border-b">
-                      <th className="p-2.5">Item Description</th>
-                      <th className="p-2.5 text-center">Qty</th>
-                      <th className="p-2.5 text-right">Price (#)</th>
-                      <th className="p-2.5 text-right">Amount (#)</th>
+                    <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
+                      <th className="py-1 px-1.5">S/N</th>
+                      <th className="py-1 px-1.5">Item Description</th>
+                      <th className="py-1 px-1.5 text-center">Qty</th>
+                      <th className="py-1 px-1.5 text-right">Price (#)</th>
+                      <th className="py-1 px-1.5 text-right">Amount (#)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {activeInvoiceSale.items && activeInvoiceSale.items.length > 0 ? (
                       activeInvoiceSale.items.map((item, i) => (
-                        <tr key={i}>
-                          <td className="p-2.5 font-medium">
-                            {item.name} <span className="text-[10px] text-orange-600 block">Batch: {item.batch}</span>
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="py-1 px-1.5 text-slate-500 text-center">{i + 1}</td>
+                          <td className="py-1 px-1.5 font-medium text-slate-900">
+                            {item.name} {item.batch && <span className="text-[9px] text-orange-700">({item.batch})</span>}
                           </td>
-                          <td className="p-2.5 text-center font-bold">{item.qty}</td>
-                          <td className="p-2.5 text-right">#{item.price?.toLocaleString()}</td>
-                          <td className="p-2.5 text-right font-bold">#{(item.price * item.qty).toLocaleString()}</td>
+                          <td className="py-1 px-1.5 text-center font-bold text-slate-900">{item.qty}</td>
+                          <td className="py-1 px-1.5 text-right text-slate-800">#{item.price?.toLocaleString()}</td>
+                          <td className="py-1 px-1.5 text-right font-bold text-slate-900">#{(item.price * item.qty).toLocaleString()}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="4" className="p-2.5 text-center text-slate-500">{activeInvoiceSale.goods}</td>
+                        <td colSpan="5" className="py-2 text-center text-slate-500">{activeInvoiceSale.goods}</td>
                       </tr>
                     )}
                   </tbody>
@@ -993,17 +1025,17 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
               </div>
 
               {/* Financial Totals */}
-              <div className="border-t pt-4 space-y-2 text-xs flex flex-col items-end">
-                <div className="w-64 space-y-1.5">
-                  <div className="flex justify-between text-slate-600 font-semibold">
+              <div className="border-t border-slate-300 pt-2 space-y-1 text-[11px] flex flex-col items-end">
+                <div className="w-56 space-y-1">
+                  <div className="flex justify-between text-slate-700 font-semibold">
                     <span>Total Amount:</span>
-                    <span className="font-bold">#{(activeInvoiceSale.total || 0).toLocaleString()}</span>
+                    <span className="font-bold text-slate-900">#{(activeInvoiceSale.total || 0).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-emerald-600 font-semibold">
+                  <div className="flex justify-between text-emerald-700 font-semibold">
                     <span>Amount Paid:</span>
                     <span className="font-bold">#{(activeInvoiceSale.paid || 0).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-rose-600 font-extrabold border-t pt-1.5 text-sm">
+                  <div className="flex justify-between text-rose-700 font-extrabold border-t border-slate-200 pt-1 text-xs">
                     <span>Balance Due:</span>
                     <span>#{Math.max(0, (activeInvoiceSale.total || 0) - (activeInvoiceSale.paid || 0)).toLocaleString()}</span>
                   </div>
@@ -1011,18 +1043,18 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
               </div>
 
               {/* Footer Note */}
-              <div className="text-center pt-4 border-t text-[10px] text-slate-400 font-medium">
-                Thank you for your patronage! • Z Ikenna Global Resources
+              <div className="text-center pt-2 border-t border-slate-200 text-[9px] text-slate-500 font-medium">
+                Thank you for your business! • Z Ikenna Global Resources
               </div>
 
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-1 no-print">
               <button
                 type="button"
                 onClick={() => setActiveInvoiceSale(null)}
-                className="w-1/2 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-xl uppercase transition-colors cursor-pointer"
+                className="w-1/2 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-xl uppercase transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -1031,7 +1063,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                 onClick={() => {
                   window.print();
                 }}
-                className="w-1/2 py-2.5 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-xl uppercase transition-colors flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
+                className="w-1/2 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-xl uppercase transition-colors flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print / Save PDF</span>
@@ -1044,7 +1076,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
       {/* --- CUSTOMER EDIT MODAL --- */}
       {isCustomerModalOpen && editingCustomer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 no-print">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 space-y-4">
             <h3 className="font-bold text-xs uppercase text-slate-800 border-b pb-2">Edit Customer Details</h3>
             <form onSubmit={handleSaveCustomerChanges} className="space-y-3">
@@ -1089,7 +1121,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
 
       {/* 🔒 ADMIN PIN SECURITY MODAL */}
       {isPinModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
           <div className="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-150">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
