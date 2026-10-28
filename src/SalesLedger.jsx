@@ -393,7 +393,8 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
         staff_id: staffId,
         staff_name: staffName,
         goods: goodsDescription,
-        batch: cartItems.length === 1 ? cartItems[0[0].product_id) : null,
+        batch: cartItems.length === 1 ? cartItems[0].batch : 'MULTI-BATCH',
+        product_id: cartItems.length === 1 ? (cartItems[0].productId || cartItems[0].product_id) : null,
         qty: cartItems.reduce((sum, item) => sum + item.qty, 0),
         total: cartTotal,
         paid: paidAmount,
@@ -971,7 +972,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                   <p className="text-[11px] font-semibold leading-tight text-gray-600">WhatsApp: +2347060433000</p>
                 </div>
                 <div className="text-right flex flex-col items-end">
-                  {/* NEW "ZIG" LOGO BLOCK */}
+                  {/* "ZIG" LOGO BLOCK */}
                   <div className="w-12 h-12 flex items-center justify-center bg-[#202737] rounded-xl text-white font-black text-xl mb-3">
                     ZIG
                   </div>
@@ -1011,8 +1012,7 @@ export default function SalesLedger({ products, customers, fetchProducts, fetchC
                         <tr key={i} className="hover:bg-[#fcfdfe]">
                           <td className="py-2.5 px-2 text-gray-500">{i + 1}</td>
                           <td className="py-2.5 px-2 font-medium">
-                            {/* "N/A" REMOVED HERE */}
-                            {item.name} {item.batch && <span className="text-[10px] text-orange-600 block">Batch: {item.batch}</span>}
+                            {item.name} {item.batch && item.batch !== 'N/A' && <span className="text-[10px] text-orange-600 block">Batch: {item.batch}</span>}
                           </td>
                           <td className="py-2.5 px-2 text-center font-bold text-lg">{item.qty}</td>
                           <td className="py-2.5 px-2 text-right">#{item.price?.toLocaleString()}</td>
